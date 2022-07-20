@@ -1,0 +1,32 @@
+﻿<Page
+    x:Class="StateMachineInputs.MainPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:StateMachineInputs"
+    xmlns:rive="using:RiveSharp.Views"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d"
+    Background="{ThemeResource ApplicationPageBackgroundThemeBrush}">
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="400" />
+        </Grid.ColumnDefinitions>
+        <rive:Panel DrawInBackground="True" Source="https://public.rive.app/community/runtime-files/2244-4463-animated-login-screen.riv" Grid.Column="0">
+            <rive:StateMachineInputBool rive:InputName="isChecking" Value="{Binding IsChecked, ElementName=IsChecking}" />
+            <rive:StateMachineInputNumber rive:InputName="numLook" Value="{Binding Value, ElementName=NumLook}" />
+            <rive:StateMachineInputBool rive:InputName="isHandsUp" Value="{Binding IsChecked, ElementName=IsHandsUp}" />
+            <rive:StateMachineInputTrigger rive:InputName="trigFail" x:Name="TrigFail" />
+            <rive:StateMachineInputTrigger rive:InputName="trigSuccess" x:Name="TrigSuccess" />
+        </rive:Panel>
+        <StackPanel VerticalAlignment="Center" Padding="20" Spacing="10" Grid.Column="1">
+            <CheckBox Content="Looking" x:Name="IsChecking" />
+            <Slider Minimum="0" Maximum="100" Value="0" x:Name="NumLook" IsEnabled="{Binding IsChecked, ElementName=IsChecking}" />
+            <CheckBox Content="Hands Up" x:Name="IsHandsUp" />
+            <Button Content="Failure" Click="TrigFail.Fire" />
+            <Button Content="Success" Click="TrigSuccess.Fire" />
+        </StackPanel>
+    </Grid>
+</Page>
