@@ -126,15 +126,15 @@
     <EmbeddedResource Include="Properties\RiveSharp.Views.UWP.rd.xml" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.NETCore.UniversalWindowsPlatform">
+      <Version>6.2.14</Version>
+    </PackageReference>
     <PackageReference Include="SkiaSharp.Views">
       <Version>2.88.0</Version>
     </PackageReference>
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\RiveSharp.UWP\RiveSharp.UWP.csproj">
-      <Project>{21ff787d-f4cb-4b69-9ee7-46b1251d73ea}</Project>
-      <Name>RiveSharp.UWP</Name>
-    </ProjectReference>
+    <PackageReference Include="Rive.RiveSharp.UWP">
+      <Version>1.0.0-alpha-ee041514d</Version>
+    </PackageReference>
   </ItemGroup>
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">
     <VisualStudioVersion>14.0</VisualStudioVersion>

@@ -282,7 +282,7 @@ namespace RiveSharp.Views
                 action();
             }
 
-            if (!mScene.IsValid)
+            if (!mScene.IsLoaded)
             {
                 return;
             }
