@@ -18,9 +18,9 @@
             <RowDefinition Height="*" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
-        <rive:Panel Source="Assets\runner.riv" Grid.Row="0"  Grid.Column="0" />
-        <rive:Panel Source="Assets\switch_event_example.riv" Grid.Row="0" Grid.Column="1" />
-        <rive:Panel Source="Assets\ball.riv" StateMachine="Main State Machine" Grid.Row="1" Grid.Column="0" />
-        <rive:Panel Source="Assets\tape.riv" Grid.Row="1" Grid.Column="1" />
+        <rive:RivePlayer Source="Assets\runner.riv" Grid.Row="0"  Grid.Column="0" />
+        <rive:RivePlayer Source="Assets\switch_event_example.riv" Grid.Row="0" Grid.Column="1" />
+        <rive:RivePlayer Source="Assets\ball.riv" StateMachine="Main State Machine" Grid.Row="1" Grid.Column="0" />
+        <rive:RivePlayer Source="Assets\tape.riv" Grid.Row="1" Grid.Column="1" />
     </Grid>
 </Page>

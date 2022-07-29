@@ -15,9 +15,9 @@ using Windows.UI.Xaml.Input;
 namespace RiveSharp.Views
 {
     // Implements a simple view that renders content from a .riv file.
-    public class Panel : SKSwapChainPanel
+    public class RivePlayer : SKSwapChainPanel
     {
-        public Panel()
+        public RivePlayer()
         {
             this.Loaded += OnLoaded;
             this.PointerPressed +=

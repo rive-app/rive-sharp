@@ -5,7 +5,7 @@ namespace RiveSharp.Views
 {
     // Wraps a custom, named state machine input value. This element is not visible and does not
     // participate in layout, but it is designed to live in the XAML tree and apply its Value to its
-    // parent "Panel" object's Scene.
+    // parent "RivePlayer" object's Scene.
     public abstract class StateMachineInput : FrameworkElement
     {
         public StateMachineInput()
@@ -25,7 +25,7 @@ namespace RiveSharp.Views
             }
         }
 
-        protected bool GetParentPanel(out Panel parent)
+        protected bool GetParentPanel(out RivePlayer parent)
         {
             if (this.Parent == null)
             {
@@ -34,20 +34,20 @@ namespace RiveSharp.Views
                 parent = null;
                 return false;
             }
-            if (this.Parent.GetType() != typeof(Panel))
-                throw new Exception("StateMachineInput must be a direct child of Panel.");
-            parent = this.Parent as Panel;
+            if (this.Parent.GetType() != typeof(RivePlayer))
+                throw new Exception("StateMachineInput must be a direct child of RivePlayer.");
+            parent = this.Parent as RivePlayer;
             return true;
         }
 
         protected void Apply()
         {
-            Panel parent;
+            RivePlayer parent;
             if (GetParentPanel(out parent))
                 Apply(parent);
         }
 
-        protected abstract void Apply(Panel parent);
+        protected abstract void Apply(RivePlayer parent);
     }
 
     public class StateMachineInputBool : StateMachineInput
@@ -75,7 +75,7 @@ namespace RiveSharp.Views
                 smib.Apply();
         }
 
-        protected override void Apply(Panel parent)
+        protected override void Apply(RivePlayer parent)
         {
             parent.SetBool(this.InputName, this.Value);
         }
@@ -106,7 +106,7 @@ namespace RiveSharp.Views
                 smin.Apply();
         }
 
-        protected override void Apply(Panel parent)
+        protected override void Apply(RivePlayer parent)
         {
             parent.SetNumber(this.InputName, (float)this.Value);
         }
@@ -116,7 +116,7 @@ namespace RiveSharp.Views
     {
         public void Fire()
         {
-            Panel parent;
+            RivePlayer parent;
             if (GetParentPanel(out parent))
                 parent.FireTrigger(this.InputName);
         }
@@ -126,6 +126,6 @@ namespace RiveSharp.Views
         public void Fire(object s, RoutedEventArgs e) => Fire();
 
         // Triggers don't have anything to apply.
-        protected override void Apply(Panel parent) { }
+        protected override void Apply(RivePlayer parent) { }
     }
 }
