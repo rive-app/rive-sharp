@@ -1,131 +1,116 @@
-﻿using System;
+using System;
 using Windows.UI.Xaml;
+using Windows.UI.Xaml.Markup;
 
 namespace RiveSharp.Views
 {
-    // Wraps a custom, named state machine input value. This element is not visible and does not
-    // participate in layout, but it is designed to live in the XAML tree and apply its Value to its
-    // parent "RivePlayer" object's Scene.
-    public abstract class StateMachineInput : FrameworkElement
+    // This base class wraps a custom, named state machine input value.
+    public abstract class StateMachineInput : DependencyObject
     {
-        public StateMachineInput()
+        private string mTarget;
+        public string Target
         {
-            this.Visibility = Visibility.Collapsed;
-            this.Loaded += (object s, RoutedEventArgs e) => Apply();
-        }
-
-        private string mInputName;
-        public string InputName
-        {
-            get => mInputName;
+            get => mTarget;  // Must be null-checked before use.
             set
             {
-                mInputName = value;
+                mTarget = value;
                 Apply();
             }
         }
 
-        protected bool GetParentPanel(out RivePlayer parent)
+        private WeakReference<RivePlayer> mRivePlayer = new WeakReference<RivePlayer>(null);
+        protected WeakReference<RivePlayer> RivePlayer => mRivePlayer;
+
+        // Sets mRivePlayer to the given rivePlayer object and applies our input value to the state
+        // machine. Does nothing if mRivePlayer was already equal to rivePlayer.
+        internal void SetRivePlayer(WeakReference<RivePlayer> rivePlayer)
         {
-            if (this.Parent == null)
-            {
-                if (this.IsLoaded)
-                    throw new Exception("StateMachineInput has a null parent after being loaded.");
-                parent = null;
-                return false;
-            }
-            if (this.Parent.GetType() != typeof(RivePlayer))
-                throw new Exception("StateMachineInput must be a direct child of RivePlayer.");
-            parent = this.Parent as RivePlayer;
-            return true;
+            mRivePlayer = rivePlayer;
+            Apply();
         }
 
         protected void Apply()
         {
-            RivePlayer parent;
-            if (GetParentPanel(out parent))
-                Apply(parent);
+            RivePlayer rivePlayer;
+            if (!String.IsNullOrEmpty(mTarget) && mRivePlayer.TryGetTarget(out rivePlayer))
+                Apply(rivePlayer, mTarget);
         }
 
-        protected abstract void Apply(RivePlayer parent);
+        // Applies our input value to the rivePlayer's state machine.
+        // rivePlayer and inputName are guaranteed to not be null or empty.
+        protected abstract void Apply(RivePlayer rivePlayer, string inputName);
     }
 
-    public class StateMachineInputBool : StateMachineInput
+    [ContentProperty(Name = nameof(Value))]
+    public class BoolInput : StateMachineInput
     {
         // Define "Value" as a DependencyProperty so it can be data-bound.
-        public static readonly DependencyProperty sValueProperty = DependencyProperty.Register(
-            "Value",
+        public static readonly DependencyProperty ValueProperty = DependencyProperty.Register(
+            nameof(Value),
             typeof(bool),
-            typeof(StateMachineInputBool),
+            typeof(BoolInput),
             new PropertyMetadata(false, new PropertyChangedCallback(OnValueChanged))
         );
 
-        public static DependencyProperty ValueProperty => sValueProperty;
-
         public bool Value
         {
-            get => (bool)GetValue(sValueProperty);
-            set => SetValue(sValueProperty, value);
+            get => (bool)GetValue(ValueProperty);
+            set => SetValue(ValueProperty, value);
         }
 
         private static void OnValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            var smib = d as StateMachineInputBool;
-            if (smib != null)
-                smib.Apply();
+            (d as BoolInput).Apply();
         }
 
-        protected override void Apply(RivePlayer parent)
+        protected override void Apply(RivePlayer rivePlayer, string inputName)
         {
-            parent.SetBool(this.InputName, this.Value);
+            rivePlayer.SetBool(inputName, this.Value);
         }
     }
 
-    public class StateMachineInputNumber : StateMachineInput
+    [ContentProperty(Name = nameof(Value))]
+    public class NumberInput : StateMachineInput
     {
         // Define "Value" as a DependencyProperty so it can be data-bound.
-        private static readonly DependencyProperty sValueProperty = DependencyProperty.Register(
-            "Value",
+        private static readonly DependencyProperty ValueProperty = DependencyProperty.Register(
+            nameof(Value),
             typeof(double),
-            typeof(StateMachineInputNumber),
+            typeof(NumberInput),
             new PropertyMetadata(0.0, new PropertyChangedCallback(OnValueChanged))
         );
 
-        public static DependencyProperty ValueProperty => sValueProperty;
-
         public double Value
         {
-            get => (double)GetValue(sValueProperty);
-            set => SetValue(sValueProperty, value);
+            get => (double)GetValue(ValueProperty);
+            set => SetValue(ValueProperty, value);
         }
 
         private static void OnValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            var smin = d as StateMachineInputNumber;
-            if (smin != null)
-                smin.Apply();
+            (d as NumberInput).Apply();
         }
 
-        protected override void Apply(RivePlayer parent)
+        protected override void Apply(RivePlayer rivePlayer, string inputName)
         {
-            parent.SetNumber(this.InputName, (float)this.Value);
+            rivePlayer.SetNumber(inputName, (float)this.Value);
         }
     }
 
-    public class StateMachineInputTrigger : StateMachineInput
+    public class TriggerInput : StateMachineInput
     {
         public void Fire()
         {
-            RivePlayer parent;
-            if (GetParentPanel(out parent))
-                parent.FireTrigger(this.InputName);
+            RivePlayer rivePlayer;
+            if (!String.IsNullOrEmpty(this.Target) && this.RivePlayer.TryGetTarget(out rivePlayer))
+                rivePlayer.FireTrigger(this.Target);
         }
 
         // Make a Fire() overload that matches the RoutedEventHandler delegate.
         // This allows us do to things like <Button Click="MyTriggerInput.Fire" ... />
         public void Fire(object s, RoutedEventArgs e) => Fire();
 
-        // Triggers don't have anything to apply.
-        protected override void Apply(RivePlayer parent) { }
+        // Triggers don't have any persistent data to apply.
+        protected override void Apply(RivePlayer rivePlayer, string inputName) { }
     }
 }

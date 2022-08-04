@@ -123,6 +123,7 @@
     <Compile Include="RivePlayer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="StateMachineInput.cs" />
+    <Compile Include="StateMachineInputCollection.cs" />
     <EmbeddedResource Include="Properties\RiveSharp.Views.UWP.rd.xml" />
   </ItemGroup>
   <ItemGroup>
