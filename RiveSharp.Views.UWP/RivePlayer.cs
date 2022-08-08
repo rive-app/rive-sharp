@@ -11,24 +11,14 @@ using Windows.Storage;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Input;
+using Windows.UI.Xaml.Markup;
 
 namespace RiveSharp.Views
 {
     // Implements a simple view that renders content from a .riv file.
+    [ContentProperty(Name = nameof(StateMachineInputs))]
     public class RivePlayer : SKSwapChainPanel
     {
-        public RivePlayer()
-        {
-            this.Loaded += OnLoaded;
-            this.PointerPressed +=
-                (object s, PointerRoutedEventArgs e) => HandlePointerEvent(mScene.PointerDown, e);
-            this.PointerMoved +=
-                (object s, PointerRoutedEventArgs e) => HandlePointerEvent(mScene.PointerMove, e);
-            this.PointerReleased +=
-                (object s, PointerRoutedEventArgs e) => HandlePointerEvent(mScene.PointerUp, e);
-            this.PaintSurface += OnPaintSurface;
-        }
-
         // The "shadow" state is our main-thread copy of the animation parameters. The actual scene
         // object lives on the render thread.
         private string mShadowSourceFilename = "";
@@ -58,39 +48,6 @@ namespace RiveSharp.Views
                 mDeferredSMInputsDuringFileLoad = new List<Action>();
                 LoadSourceFileDataAsync(mActiveSourceFileLoader.Token);
             }
-        }
-
-        private async void LoadSourceFileDataAsync(CancellationToken cancellationToken)
-        {
-            byte[] data = null;
-            Uri uri;
-            if (Uri.TryCreate(mShadowSourceFilename, UriKind.Absolute, out uri))
-            {
-                var client = new WebClient();
-                data = await client.DownloadDataTaskAsync(uri);
-            }
-            else
-            {
-                var getFileTask = Package.Current.InstalledLocation.TryGetItemAsync(mShadowSourceFilename);
-                var storageFile = await getFileTask as StorageFile;
-                if (storageFile != null && !cancellationToken.IsCancellationRequested)
-                {
-                    var inputStream = await storageFile.OpenSequentialReadAsync();
-                    var fileStream = inputStream.AsStreamForRead();
-                    data = new byte[fileStream.Length];
-                    fileStream.Read(data, 0, data.Length);
-                    fileStream.Dispose();  // Don't keep the file open.
-                }
-            }
-            if (data != null && !cancellationToken.IsCancellationRequested)
-            {
-                mSceneActionsQueue.Enqueue(() => UpdateScene(SceneUpdates.File, data));
-                // Apply deferred state machine inputs once the scene is fully loaded.
-                foreach (Action stateMachineInput in mDeferredSMInputsDuringFileLoad)
-                    mSceneActionsQueue.Enqueue(stateMachineInput);
-            }
-            mDeferredSMInputsDuringFileLoad = null;
-            mActiveSourceFileLoader = null;
         }
 
         // Name of the artbord to load from the .riv file. If null or empty, the default artboard
@@ -165,6 +122,65 @@ namespace RiveSharp.Views
                     mSceneActionsQueue.Enqueue(() => UpdateScene(SceneUpdates.AnimationOrStateMachine));
                 }
             }
+        }
+
+        public static readonly DependencyProperty StateMachineInputsProperty = DependencyProperty.Register(
+            nameof(StateMachineInputs),
+            typeof(StateMachineInputCollection),
+            typeof(RivePlayer),
+            new PropertyMetadata(null)
+        );
+
+        public StateMachineInputCollection StateMachineInputs
+        {
+            get => (StateMachineInputCollection)GetValue(StateMachineInputsProperty);
+            set => SetValue(StateMachineInputsProperty, value);
+        }
+
+        public RivePlayer()
+        {
+            this.StateMachineInputs = new StateMachineInputCollection(this);
+            this.Loaded += OnLoaded;
+            this.PointerPressed +=
+                (object s, PointerRoutedEventArgs e) => HandlePointerEvent(mScene.PointerDown, e);
+            this.PointerMoved +=
+                (object s, PointerRoutedEventArgs e) => HandlePointerEvent(mScene.PointerMove, e);
+            this.PointerReleased +=
+                (object s, PointerRoutedEventArgs e) => HandlePointerEvent(mScene.PointerUp, e);
+            this.PaintSurface += OnPaintSurface;
+        }
+
+        private async void LoadSourceFileDataAsync(CancellationToken cancellationToken)
+        {
+            byte[] data = null;
+            Uri uri;
+            if (Uri.TryCreate(mShadowSourceFilename, UriKind.Absolute, out uri))
+            {
+                var client = new WebClient();
+                data = await client.DownloadDataTaskAsync(uri);
+            }
+            else
+            {
+                var getFileTask = Package.Current.InstalledLocation.TryGetItemAsync(mShadowSourceFilename);
+                var storageFile = await getFileTask as StorageFile;
+                if (storageFile != null && !cancellationToken.IsCancellationRequested)
+                {
+                    var inputStream = await storageFile.OpenSequentialReadAsync();
+                    var fileStream = inputStream.AsStreamForRead();
+                    data = new byte[fileStream.Length];
+                    fileStream.Read(data, 0, data.Length);
+                    fileStream.Dispose();  // Don't keep the file open.
+                }
+            }
+            if (data != null && !cancellationToken.IsCancellationRequested)
+            {
+                mSceneActionsQueue.Enqueue(() => UpdateScene(SceneUpdates.File, data));
+                // Apply deferred state machine inputs once the scene is fully loaded.
+                foreach (Action stateMachineInput in mDeferredSMInputsDuringFileLoad)
+                    mSceneActionsQueue.Enqueue(stateMachineInput);
+            }
+            mDeferredSMInputsDuringFileLoad = null;
+            mActiveSourceFileLoader = null;
         }
 
         // State machine inputs to set once the current async file load finishes.

@@ -1,4 +1,4 @@
-﻿<Page
+<Page
     x:Class="StateMachineInputs.MainPage"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -15,11 +15,11 @@
             <ColumnDefinition Width="400" />
         </Grid.ColumnDefinitions>
         <rive:RivePlayer DrawInBackground="True" Source="https://public.rive.app/community/runtime-files/2244-4463-animated-login-screen.riv" Grid.Column="0">
-            <rive:StateMachineInputBool rive:InputName="isChecking" Value="{Binding IsChecked, ElementName=IsChecking}" />
-            <rive:StateMachineInputNumber rive:InputName="numLook" Value="{Binding Value, ElementName=NumLook}" />
-            <rive:StateMachineInputBool rive:InputName="isHandsUp" Value="{Binding IsChecked, ElementName=IsHandsUp}" />
-            <rive:StateMachineInputTrigger rive:InputName="trigFail" x:Name="TrigFail" />
-            <rive:StateMachineInputTrigger rive:InputName="trigSuccess" x:Name="TrigSuccess" />
+            <rive:BoolInput Target="isChecking" Value="{Binding IsChecked, ElementName=IsChecking}" />
+            <rive:NumberInput Target="numLook" Value="{Binding Value, ElementName=NumLook}" />
+            <rive:BoolInput Target="isHandsUp" Value="{Binding IsChecked, ElementName=IsHandsUp}" />
+            <rive:TriggerInput Target="trigFail" x:Name="TrigFail" />
+            <rive:TriggerInput Target="trigSuccess" x:Name="TrigSuccess" />
         </rive:RivePlayer>
         <StackPanel VerticalAlignment="Center" Padding="20" Spacing="10" Grid.Column="1">
             <CheckBox Content="Looking" x:Name="IsChecking" />
