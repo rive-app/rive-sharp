@@ -60,7 +60,7 @@ namespace RiveSharp.Views
 
         private static void OnValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            (d as BoolInput).Apply();
+            ((BoolInput)d).Apply();
         }
 
         protected override void Apply(RivePlayer rivePlayer, string inputName)
@@ -88,7 +88,7 @@ namespace RiveSharp.Views
 
         private static void OnValueChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
-            (d as NumberInput).Apply();
+            ((NumberInput)d).Apply();
         }
 
         protected override void Apply(RivePlayer rivePlayer, string inputName)
