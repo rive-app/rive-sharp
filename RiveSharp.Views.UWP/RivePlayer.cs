@@ -1,4 +1,4 @@
-﻿using SkiaSharp.Views.UWP;
+using SkiaSharp.Views.UWP;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -11,131 +11,13 @@ using Windows.Storage;
 using Windows.UI.Core;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Input;
-using Windows.UI.Xaml.Markup;
 
 namespace RiveSharp.Views
 {
-    // Implements a simple view that renders content from a .riv file.
-    [ContentProperty(Name = nameof(StateMachineInputs))]
-    public class RivePlayer : SKSwapChainPanel
+    // Implements a simple view that plays content from a .riv file.
+    public partial class RivePlayer : SKSwapChainPanel
     {
-        // The "shadow" state is our main-thread copy of the animation parameters. The actual scene
-        // object lives on the render thread.
-        private string mShadowSourceFilename = "";
-        private string mShadowArtboardName = "";
-        private string mShadowStateMachineName = "";
-        private string mShadowAnimationName = "";
-
         private CancellationTokenSource mActiveSourceFileLoader = null;
-
-        // Filename of the .riv file to open.
-        public string Source
-        {
-            get => mShadowSourceFilename;
-            set
-            {
-                if (mShadowSourceFilename == value)
-                {
-                    return;
-                }
-                mShadowSourceFilename = value;
-                // Clear the current Scene while we wait for the new one to load.
-                mSceneActionsQueue.Enqueue(() => mScene = new Scene());
-                if (mActiveSourceFileLoader != null)
-                    mActiveSourceFileLoader.Cancel();
-                mActiveSourceFileLoader = new CancellationTokenSource();
-                // Defer state machine inputs here until the new file is loaded.
-                mDeferredSMInputsDuringFileLoad = new List<Action>();
-                LoadSourceFileDataAsync(mActiveSourceFileLoader.Token);
-            }
-        }
-
-        // Name of the artbord to load from the .riv file. If null or empty, the default artboard
-        // will be loaded.
-        public string Artboard
-        {
-            get => mShadowArtboardName;
-            set
-            {
-                if (mShadowArtboardName == value)
-                {
-                    return;
-                }
-                mShadowArtboardName = value;
-                mSceneActionsQueue.Enqueue(() => mArtboardName = value);
-                if (mActiveSourceFileLoader != null)
-                {
-                    // If a file is currently loading async, it will apply mShadowArtboardName once
-                    // it completes. Loading a new artboard also invalidates any state machine
-                    // inputs that were waiting for the file load.
-                    mDeferredSMInputsDuringFileLoad.Clear();
-                }
-                else
-                {
-                    mSceneActionsQueue.Enqueue(() => UpdateScene(SceneUpdates.Artboard));
-                }
-            }
-        }
-
-        // Name of the state machine to load from the .riv file.
-        public string StateMachine
-        {
-            get => mShadowStateMachineName;
-            set
-            {
-                if (mShadowStateMachineName == value)
-                {
-                    return;
-                }
-                mShadowStateMachineName = value;
-                mSceneActionsQueue.Enqueue(() => mStateMachineName = value);
-                if (mActiveSourceFileLoader != null)
-                {
-                    // If a file is currently loading async, it will apply mShadowStateMachineName
-                    // once it completes. Loading a new state machine also invalidates any state
-                    // machine inputs that were waiting for the file load.
-                    mDeferredSMInputsDuringFileLoad.Clear();
-                }
-                else
-                {
-                    mSceneActionsQueue.Enqueue(() => UpdateScene(SceneUpdates.AnimationOrStateMachine));
-                }
-            }
-        }
-
-        // Name of the fallback animation to load from the .riv if StateMachine is null or empty.
-        public string Animation
-        {
-            get => mShadowAnimationName;
-            set
-            {
-                if (mShadowAnimationName == value)
-                {
-                    return;
-                }
-                mShadowAnimationName = value;
-                mSceneActionsQueue.Enqueue(() => mAnimationName = value);
-                // If a file is currently loading async, it will apply mAnimationName once it
-                // completes.
-                if (mActiveSourceFileLoader == null)
-                {
-                    mSceneActionsQueue.Enqueue(() => UpdateScene(SceneUpdates.AnimationOrStateMachine));
-                }
-            }
-        }
-
-        public static readonly DependencyProperty StateMachineInputsProperty = DependencyProperty.Register(
-            nameof(StateMachineInputs),
-            typeof(StateMachineInputCollection),
-            typeof(RivePlayer),
-            new PropertyMetadata(null)
-        );
-
-        public StateMachineInputCollection StateMachineInputs
-        {
-            get => (StateMachineInputCollection)GetValue(StateMachineInputsProperty);
-            set => SetValue(StateMachineInputsProperty, value);
-        }
 
         public RivePlayer()
         {
@@ -150,18 +32,18 @@ namespace RiveSharp.Views
             this.PaintSurface += OnPaintSurface;
         }
 
-        private async void LoadSourceFileDataAsync(CancellationToken cancellationToken)
+        private async void LoadSourceFileDataAsync(string name, CancellationToken cancellationToken)
         {
             byte[] data = null;
             Uri uri;
-            if (Uri.TryCreate(mShadowSourceFilename, UriKind.Absolute, out uri))
+            if (Uri.TryCreate(name, UriKind.Absolute, out uri))
             {
                 var client = new WebClient();
                 data = await client.DownloadDataTaskAsync(uri);
             }
             else
             {
-                var getFileTask = Package.Current.InstalledLocation.TryGetItemAsync(mShadowSourceFilename);
+                var getFileTask = Package.Current.InstalledLocation.TryGetItemAsync(name);
                 var storageFile = await getFileTask as StorageFile;
                 if (storageFile != null && !cancellationToken.IsCancellationRequested)
                 {
