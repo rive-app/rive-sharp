@@ -1,3 +1,5 @@
+// Copyright 2022 Rive
+
 using SkiaSharp.Views.UWP;
 using System;
 using System.Collections.Concurrent;
@@ -17,26 +19,25 @@ namespace RiveSharp.Views
     // Implements a simple view that plays content from a .riv file.
     public partial class RivePlayer : SKSwapChainPanel
     {
-        private CancellationTokenSource mActiveSourceFileLoader = null;
+        private CancellationTokenSource _activeSourceFileLoader = null;
 
         public RivePlayer()
         {
             this.StateMachineInputs = new StateMachineInputCollection(this);
             this.Loaded += OnLoaded;
             this.PointerPressed +=
-                (object s, PointerRoutedEventArgs e) => HandlePointerEvent(mScene.PointerDown, e);
+                (object s, PointerRoutedEventArgs e) => HandlePointerEvent(_scene.PointerDown, e);
             this.PointerMoved +=
-                (object s, PointerRoutedEventArgs e) => HandlePointerEvent(mScene.PointerMove, e);
+                (object s, PointerRoutedEventArgs e) => HandlePointerEvent(_scene.PointerMove, e);
             this.PointerReleased +=
-                (object s, PointerRoutedEventArgs e) => HandlePointerEvent(mScene.PointerUp, e);
+                (object s, PointerRoutedEventArgs e) => HandlePointerEvent(_scene.PointerUp, e);
             this.PaintSurface += OnPaintSurface;
         }
 
         private async void LoadSourceFileDataAsync(string name, CancellationToken cancellationToken)
         {
             byte[] data = null;
-            Uri uri;
-            if (Uri.TryCreate(name, UriKind.Absolute, out uri))
+            if (Uri.TryCreate(name, UriKind.Absolute, out var uri))
             {
                 var client = new WebClient();
                 data = await client.DownloadDataTaskAsync(uri);
@@ -56,51 +57,53 @@ namespace RiveSharp.Views
             }
             if (data != null && !cancellationToken.IsCancellationRequested)
             {
-                mSceneActionsQueue.Enqueue(() => UpdateScene(SceneUpdates.File, data));
+                sceneActionsQueue.Enqueue(() => UpdateScene(SceneUpdates.File, data));
                 // Apply deferred state machine inputs once the scene is fully loaded.
-                foreach (Action stateMachineInput in mDeferredSMInputsDuringFileLoad)
-                    mSceneActionsQueue.Enqueue(stateMachineInput);
+                foreach (Action stateMachineInput in _deferredSMInputsDuringFileLoad)
+                {
+                    sceneActionsQueue.Enqueue(stateMachineInput);
+                }
             }
-            mDeferredSMInputsDuringFileLoad = null;
-            mActiveSourceFileLoader = null;
+            _deferredSMInputsDuringFileLoad = null;
+            _activeSourceFileLoader = null;
         }
 
         // State machine inputs to set once the current async file load finishes.
-        private List<Action> mDeferredSMInputsDuringFileLoad = null;
+        private List<Action> _deferredSMInputsDuringFileLoad = null;
 
         private void EnqueueStateMachineInput(Action stateMachineInput)
         {
-            if (mDeferredSMInputsDuringFileLoad != null)
+            if (_deferredSMInputsDuringFileLoad != null)
             {
                 // A source file is currently loading async. Don't set this input until it completes.
-                mDeferredSMInputsDuringFileLoad.Add(stateMachineInput);
+                _deferredSMInputsDuringFileLoad.Add(stateMachineInput);
             }
             else
             {
-                mSceneActionsQueue.Enqueue(stateMachineInput);
+                sceneActionsQueue.Enqueue(stateMachineInput);
             }
         }
 
         public void SetBool(string name, bool value)
         {
-            EnqueueStateMachineInput(() => mScene.SetBool(name, value));
+            EnqueueStateMachineInput(() => _scene.SetBool(name, value));
         }
 
         public void SetNumber(string name, float value)
         {
-            EnqueueStateMachineInput(() => mScene.SetNumber(name, value));
+            EnqueueStateMachineInput(() => _scene.SetNumber(name, value));
         }
 
         public void FireTrigger(string name)
         {
-            EnqueueStateMachineInput(() => mScene.FireTrigger(name));
+            EnqueueStateMachineInput(() => _scene.FireTrigger(name));
         }
 
         private delegate void PointerHandler(Vec2D pos);
 
         private void HandlePointerEvent(PointerHandler handler, PointerRoutedEventArgs e)
         {
-            if (mActiveSourceFileLoader != null)
+            if (_activeSourceFileLoader != null)
             {
                 // Ignore pointer events while a new scene is loading.
                 return;
@@ -111,11 +114,10 @@ namespace RiveSharp.Views
             var pointerPos = e.GetCurrentPoint(this).Position;
 
             // Forward the pointer event to the render thread.
-            mSceneActionsQueue.Enqueue(() =>
+            sceneActionsQueue.Enqueue(() =>
             {
                 Mat2D mat = ComputeAlignment(viewSize.X, viewSize.Y);
-                Mat2D inverse;
-                if (mat.Invert(out inverse))
+                if (mat.Invert(out var inverse))
                 {
                     Vec2D artboardPos = inverse * new Vec2D((float)pointerPos.X, (float)pointerPos.Y);
                     handler(artboardPos);
@@ -125,16 +127,16 @@ namespace RiveSharp.Views
 
         // Incremented when the "InvalLoop" (responsible for scheduling PaintSurface events) should
         // terminate.
-        int mInvalLoopContinuationToken = 0;
+        int _invalLoopContinuationToken = 0;
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             Window.Current.VisibilityChanged += (object s, VisibilityChangedEventArgs vce) =>
             {
-                ++mInvalLoopContinuationToken;  // Terminate the existing inval loop (if any).
+                ++_invalLoopContinuationToken;  // Terminate the existing inval loop (if any).
                 if (vce.Visible)
                 {
-                    InvalLoopAsync(mInvalLoopContinuationToken);
+                    InvalLoopAsync(_invalLoopContinuationToken);
                 }
             };
         }
@@ -143,24 +145,24 @@ namespace RiveSharp.Views
         // (Multiple calls to Invalidate() between PaintSurface events are coalesced.)
         private async void InvalLoopAsync(int continuationToken)
         {
-            while (continuationToken == mInvalLoopContinuationToken)
+            while (continuationToken == _invalLoopContinuationToken)
             {
                 this.Invalidate();
                 await Task.Delay(TimeSpan.FromMilliseconds(8));  // 120 fps
             }
         }
 
-        // mScene is used on the render thread exclusively.
-        Scene mScene = new Scene();
+        // _scene is used on the render thread exclusively.
+        Scene _scene = new Scene();
 
         // Source actions originating from other threads must be funneled through this queue.
-        ConcurrentQueue<Action> mSceneActionsQueue = new ConcurrentQueue<Action>();
+        readonly ConcurrentQueue<Action> sceneActionsQueue = new ConcurrentQueue<Action>();
 
         // This is the render-thread copy of the animation parameters. They are set via
-        // mSceneActionsQueue. mScene is then blah blah blah
-        private string mArtboardName;
-        private string mAnimationName;
-        private string mStateMachineName;
+        // _sceneActionsQueue. _scene is then blah blah blah
+        private string _artboardName;
+        private string _animationName;
+        private string _stateMachineName;
 
         private enum SceneUpdates
         {
@@ -169,79 +171,80 @@ namespace RiveSharp.Views
             AnimationOrStateMachine = 1,
         };
 
-        DateTime mLastPaintTime;
+        DateTime _lastPaintTime;
 
         private void OnPaintSurface(object sender, SKPaintGLSurfaceEventArgs e)
         {
             // Handle pending scene actions from the main thread.
-            Action action;
-            while (mSceneActionsQueue.TryDequeue(out action))
+            while (sceneActionsQueue.TryDequeue(out var action))
             {
                 action();
             }
 
-            if (!mScene.IsLoaded)
+            if (!_scene.IsLoaded)
             {
                 return;
             }
 
             // Run the animation.
             var now = DateTime.Now;
-            if (mLastPaintTime != null)
+            if (_lastPaintTime != null)
             {
-                mScene.AdvanceAndApply((now - mLastPaintTime).TotalSeconds);
+                _scene.AdvanceAndApply((now - _lastPaintTime).TotalSeconds);
             }
-            mLastPaintTime = now;
+            _lastPaintTime = now;
 
             // Render.
             e.Surface.Canvas.Clear();
             var renderer = new Renderer(e.Surface.Canvas);
             renderer.Save();
             renderer.Transform(ComputeAlignment(e.BackendRenderTarget.Width, e.BackendRenderTarget.Height));
-            mScene.Draw(renderer);
+            _scene.Draw(renderer);
             renderer.Restore();
         }
 
-        // Called from the render thread. Updates mScene according to updates.
+        // Called from the render thread. Updates _scene according to updates.
         void UpdateScene(SceneUpdates updates, byte[] sourceFileData = null)
         {
             if (updates >= SceneUpdates.File)
             {
-                mScene.LoadFile(sourceFileData);
+                _scene.LoadFile(sourceFileData);
             }
             if (updates >= SceneUpdates.Artboard)
             {
-                mScene.LoadArtboard(mArtboardName);
+                _scene.LoadArtboard(_artboardName);
             }
             if (updates >= SceneUpdates.AnimationOrStateMachine)
             {
-                if (!String.IsNullOrEmpty(mStateMachineName))
+                if (!String.IsNullOrEmpty(_stateMachineName))
                 {
-                    mScene.LoadStateMachine(mStateMachineName);
+                    _scene.LoadStateMachine(_stateMachineName);
                 }
-                else if (!String.IsNullOrEmpty(mAnimationName))
+                else if (!String.IsNullOrEmpty(_animationName))
                 {
-                    mScene.LoadAnimation(mAnimationName);
+                    _scene.LoadAnimation(_animationName);
                 }
                 else
                 {
-                    if (!mScene.LoadStateMachine(null))
-                        mScene.LoadAnimation(null);
+                    if (!_scene.LoadStateMachine(null))
+                    {
+                        _scene.LoadAnimation(null);
+                    }
                 }
             }
         }
 
-        // Called from the render thread. Computes alignment based on the size of mScene.
+        // Called from the render thread. Computes alignment based on the size of _scene.
         private Mat2D ComputeAlignment(double width, double height)
         {
             return ComputeAlignment(new AABB(0, 0, (float)width, (float)height));
         }
 
-        // Called from the render thread. Computes alignment based on the size of mScene.
+        // Called from the render thread. Computes alignment based on the size of _scene.
         private Mat2D ComputeAlignment(AABB frame)
         {
             return Renderer.ComputeAlignment(Fit.Contain, Alignment.Center, frame,
-                                             new AABB(0, 0, mScene.Width, mScene.Height));
+                                             new AABB(0, 0, _scene.Width, _scene.Height));
         }
     }
 }

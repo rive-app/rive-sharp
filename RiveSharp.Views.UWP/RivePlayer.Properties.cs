@@ -1,3 +1,5 @@
+// Copyright 2022 Rive
+
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -85,30 +87,33 @@ namespace RiveSharp.Views
             var player = (RivePlayer)d;
             var newSourceName = (string)e.NewValue;
             // Clear the current Scene while we wait for the new one to load.
-            player.mSceneActionsQueue.Enqueue(() => player.mScene = new Scene());
-            if (player.mActiveSourceFileLoader != null)
-                player.mActiveSourceFileLoader.Cancel();
-            player.mActiveSourceFileLoader = new CancellationTokenSource();
+            player.sceneActionsQueue.Enqueue(() => player._scene = new Scene());
+            if (player._activeSourceFileLoader != null)
+            {
+                player._activeSourceFileLoader.Cancel();
+            }
+
+            player._activeSourceFileLoader = new CancellationTokenSource();
             // Defer state machine inputs here until the new file is loaded.
-            player.mDeferredSMInputsDuringFileLoad = new List<Action>();
-            player.LoadSourceFileDataAsync(newSourceName, player.mActiveSourceFileLoader.Token);
+            player._deferredSMInputsDuringFileLoad = new List<Action>();
+            player.LoadSourceFileDataAsync(newSourceName, player._activeSourceFileLoader.Token);
         }
 
         private static void OnArtboardNameChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
         {
             var player = (RivePlayer)d;
             var newArtboardName = (string)e.NewValue;
-            player.mSceneActionsQueue.Enqueue(() => player.mArtboardName = newArtboardName);
-            if (player.mActiveSourceFileLoader != null)
+            player.sceneActionsQueue.Enqueue(() => player._artboardName = newArtboardName);
+            if (player._activeSourceFileLoader != null)
             {
                 // If a file is currently loading async, it will apply the new artboard once
                 // it completes. Loading a new artboard also invalidates any state machine
                 // inputs that were waiting for the file load.
-                player.mDeferredSMInputsDuringFileLoad.Clear();
+                player._deferredSMInputsDuringFileLoad.Clear();
             }
             else
             {
-                player.mSceneActionsQueue.Enqueue(() => player.UpdateScene(SceneUpdates.Artboard));
+                player.sceneActionsQueue.Enqueue(() => player.UpdateScene(SceneUpdates.Artboard));
             }
         }
 
@@ -116,17 +121,17 @@ namespace RiveSharp.Views
         {
             var player = (RivePlayer)d;
             var newStateMachineName = (string)e.NewValue;
-            player.mSceneActionsQueue.Enqueue(() => player.mStateMachineName = newStateMachineName);
-            if (player.mActiveSourceFileLoader != null)
+            player.sceneActionsQueue.Enqueue(() => player._stateMachineName = newStateMachineName);
+            if (player._activeSourceFileLoader != null)
             {
                 // If a file is currently loading async, it will apply the new state machine
                 // once it completes. Loading a new state machine also invalidates any state
                 // machine inputs that were waiting for the file load.
-                player.mDeferredSMInputsDuringFileLoad.Clear();
+                player._deferredSMInputsDuringFileLoad.Clear();
             }
             else
             {
-                player.mSceneActionsQueue.Enqueue(() => player.UpdateScene(SceneUpdates.AnimationOrStateMachine));
+                player.sceneActionsQueue.Enqueue(() => player.UpdateScene(SceneUpdates.AnimationOrStateMachine));
             }
         }
 
@@ -134,11 +139,11 @@ namespace RiveSharp.Views
         {
             var player = (RivePlayer)d;
             var newAnimationName = (string)e.NewValue;
-            player.mSceneActionsQueue.Enqueue(() => player.mAnimationName = newAnimationName);
+            player.sceneActionsQueue.Enqueue(() => player._animationName = newAnimationName);
             // If a file is currently loading async, it will apply the new animation once it completes.
-            if (player.mActiveSourceFileLoader == null)
+            if (player._activeSourceFileLoader == null)
             {
-                player.mSceneActionsQueue.Enqueue(() => player.UpdateScene(SceneUpdates.AnimationOrStateMachine));
+                player.sceneActionsQueue.Enqueue(() => player.UpdateScene(SceneUpdates.AnimationOrStateMachine));
             }
         }
 

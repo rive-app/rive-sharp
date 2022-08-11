@@ -1,3 +1,5 @@
+// Copyright 2022 Rive
+
 using System;
 using Windows.UI.Xaml;
 using Windows.UI.Xaml.Markup;
@@ -7,33 +9,34 @@ namespace RiveSharp.Views
     // This base class wraps a custom, named state machine input value.
     public abstract class StateMachineInput : DependencyObject
     {
-        private string mTarget;
+        private string _target;
         public string Target
         {
-            get => mTarget;  // Must be null-checked before use.
+            get => _target;  // Must be null-checked before use.
             set
             {
-                mTarget = value;
+                _target = value;
                 Apply();
             }
         }
 
-        private WeakReference<RivePlayer> mRivePlayer = new WeakReference<RivePlayer>(null);
-        protected WeakReference<RivePlayer> RivePlayer => mRivePlayer;
+        private WeakReference<RivePlayer> _rivePlayer = new WeakReference<RivePlayer>(null);
+        protected WeakReference<RivePlayer> RivePlayer => _rivePlayer;
 
-        // Sets mRivePlayer to the given rivePlayer object and applies our input value to the state
-        // machine. Does nothing if mRivePlayer was already equal to rivePlayer.
+        // Sets _rivePlayer to the given rivePlayer object and applies our input value to the state
+        // machine. Does nothing if _rivePlayer was already equal to rivePlayer.
         internal void SetRivePlayer(WeakReference<RivePlayer> rivePlayer)
         {
-            mRivePlayer = rivePlayer;
+            _rivePlayer = rivePlayer;
             Apply();
         }
 
         protected void Apply()
         {
-            RivePlayer rivePlayer;
-            if (!String.IsNullOrEmpty(mTarget) && mRivePlayer.TryGetTarget(out rivePlayer))
-                Apply(rivePlayer, mTarget);
+            if (!String.IsNullOrEmpty(_target) && _rivePlayer.TryGetTarget(out var rivePlayer))
+            {
+                Apply(rivePlayer, _target);
+            }
         }
 
         // Applies our input value to the rivePlayer's state machine.
@@ -101,9 +104,10 @@ namespace RiveSharp.Views
     {
         public void Fire()
         {
-            RivePlayer rivePlayer;
-            if (!String.IsNullOrEmpty(this.Target) && this.RivePlayer.TryGetTarget(out rivePlayer))
+            if (!String.IsNullOrEmpty(this.Target) && this.RivePlayer.TryGetTarget(out var rivePlayer))
+            {
                 rivePlayer.FireTrigger(this.Target);
+            }
         }
 
         // Make a Fire() overload that matches the RoutedEventHandler delegate.

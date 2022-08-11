@@ -1,8 +1,6 @@
+// Copyright 2022 Rive
+
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Windows.Foundation.Collections;
 using Windows.UI.Xaml;
 
@@ -18,11 +16,11 @@ namespace RiveSharp.Views
     //
     public class StateMachineInputCollection : DependencyObjectCollection
     {
-        private WeakReference<RivePlayer> mRivePlayer;
+        private readonly WeakReference<RivePlayer> rivePlayer;
 
         public StateMachineInputCollection(RivePlayer rivePlayer)
         {
-            mRivePlayer = new WeakReference<RivePlayer>(rivePlayer);
+            this.rivePlayer = new WeakReference<RivePlayer>(rivePlayer);
             VectorChanged += InputsVectorChanged;
         }
 
@@ -33,17 +31,17 @@ namespace RiveSharp.Views
             {
                 case CollectionChange.ItemInserted:
                 case CollectionChange.ItemChanged:
-                    {
-                        var input = (StateMachineInput)sender[(int)@event.Index];
-                        input.SetRivePlayer(mRivePlayer);
-                    }
-                    break;
+                {
+                    var input = (StateMachineInput)sender[(int)@event.Index];
+                    input.SetRivePlayer(rivePlayer);
+                }
+                break;
                 case CollectionChange.ItemRemoved:
-                    {
-                        var input = (StateMachineInput)sender[(int)@event.Index];
-                        input.SetRivePlayer(new WeakReference<RivePlayer>(null));
-                        break;
-                    }
+                {
+                    var input = (StateMachineInput)sender[(int)@event.Index];
+                    input.SetRivePlayer(new WeakReference<RivePlayer>(null));
+                    break;
+                }
                 case CollectionChange.Reset:
                     foreach (StateMachineInput input in sender)
                     {
