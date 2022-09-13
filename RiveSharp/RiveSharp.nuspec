@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package >
+  <metadata>
+    <id>Rive.RiveSharp</id>
+    <version>$version$</version>
+    <title>RiveSharp</title>
+    <authors>Rive</authors>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <license type="expression">MIT</license>
+    <!-- <icon>icon.png</icon> -->
+    <projectUrl>https://rive.app</projectUrl>
+    <description>Low level runtime API for playing Rive animations</description>
+    <releaseNotes>Initial alpha release</releaseNotes>
+    <copyright>Copyright 2022</copyright>
+    <tags></tags>
+    <dependencies>
+      <dependency id="SkiaSharp" version="2.88.0" />
+    </dependencies>
+  </metadata>
+  <files>
+    <file src="..\native\bin\x86\release\rive.dll" target="runtimes/win10-x86/native"/>
+    <file src="..\native\bin\x64\release\rive.dll" target="runtimes/win10-x64/native"/>
+  </files>
+</package>

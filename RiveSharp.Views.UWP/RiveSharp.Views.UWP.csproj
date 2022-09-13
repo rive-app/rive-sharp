@@ -4,7 +4,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{FAF58208-FF43-431D-98D5-5F7E128F4AB0}</ProjectGuid>
+    <ProjectGuid>{F68F58D4-868B-49A2-A22F-6C9E076EA4AD}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>RiveSharp.Views.UWP</RootNamespace>
@@ -120,8 +120,8 @@
     <RestoreProjectStyle>PackageReference</RestoreProjectStyle>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="RivePlayer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RivePlayer.cs" />
     <Compile Include="RivePlayer.Properties.cs" />
     <Compile Include="StateMachineInput.cs" />
     <Compile Include="StateMachineInputCollection.cs" />
@@ -132,11 +132,14 @@
       <Version>6.2.14</Version>
     </PackageReference>
     <PackageReference Include="SkiaSharp.Views">
-      <Version>2.88.0</Version>
+      <Version>2.88.1</Version>
     </PackageReference>
-    <PackageReference Include="Rive.RiveSharp.UWP">
-      <Version>1.0.0-alpha.214cc5f1e</Version>
-    </PackageReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RiveSharp\RiveSharp.csproj">
+      <Project>{7a1048dc-d6e5-4dbf-b9ea-2321d0ee0c66}</Project>
+      <Name>RiveSharp</Name>
+    </ProjectReference>
   </ItemGroup>
   <PropertyGroup Condition=" '$(VisualStudioVersion)' == '' or '$(VisualStudioVersion)' &lt; '14.0' ">
     <VisualStudioVersion>14.0</VisualStudioVersion>

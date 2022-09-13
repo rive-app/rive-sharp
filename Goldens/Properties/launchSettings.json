@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Goldens": {
+      "commandName": "Project",
+      "commandLineArgs": "--rivs ..\\..\\gold\\rivs --destination candidates\\ --verbose true",
+      "workingDirectory": "$(SolutionDir)",
+      "nativeDebugging": true
+    }
+  }
+}
