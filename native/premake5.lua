@@ -1,7 +1,7 @@
 workspace "rive-cpp"
 
 configurations {"Debug", "Release"}
-platforms {"x86", "x64"}
+platforms {"x86", "x64", "ARM64"}
 
 -- Are we in the "rive-sharp" or "rive" repository?
 local handle = io.popen("git remote -v")
@@ -47,6 +47,9 @@ project "rive"
 
     filter "platforms:x64"
         architecture "x64"
+
+    filter "platforms:ARM64"
+        architecture "ARM64"
 
     filter {}
 
