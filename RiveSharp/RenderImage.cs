@@ -8,7 +8,17 @@ namespace RiveSharp
 {
     public class RenderImage
     {
-        static RenderImage() => InitNativeDelegates();
+        static readonly RenderImageDelegates Delegates = new RenderImageDelegates
+        {
+            Release = RiveAPI.ReleaseNativeRefCallback,
+            Width = WidthCallback,
+            Height = HeightCallback
+        };
+
+        static RenderImage()
+        {
+            RiveAPI.RenderImage_RegisterDelegates(Delegates);
+        }
 
         public readonly SKImage SKImage;
 
@@ -23,29 +33,21 @@ namespace RiveSharp
             SKImage = skimage;
         }
 
-        public int Width { get { return SKImage.Width; } }
-        public int Height { get { return SKImage.Height; } }
+        public int Width => SKImage.Width;
+        public int Height => SKImage.Height;
 
-        // Native interop.
-        private delegate void NativeFreeDelegate(IntPtr ptr);
-        private delegate Int32 NativeWidthHeightDelegate(IntPtr ptr);
-
-        internal static RenderImage FromNative(IntPtr ptr)
+        [MonoPInvokeCallback(typeof(RenderImageDelegates.WidthHeightDelegate))]
+        static Int32 WidthCallback(IntPtr @ref)
         {
-            return (RenderImage)GCHandle.FromIntPtr(ptr).Target;
+            var renderImage = RiveAPI.CastNativeRef<RenderImage>(@ref);
+            return renderImage.Width;
         }
 
-        internal static void InitNativeDelegates()
+        [MonoPInvokeCallback(typeof(RenderImageDelegates.WidthHeightDelegate))]
+        static Int32 HeightCallback(IntPtr @ref)
         {
-            RenderImage_NativeInitDelegates(
-                (IntPtr ptr) => GCHandle.FromIntPtr(ptr).Free(),
-                (IntPtr ptr) => FromNative(ptr).Width,
-                (IntPtr ptr) => FromNative(ptr).Height);
+            var renderImage = RiveAPI.CastNativeRef<RenderImage>(@ref);
+            return renderImage.Height;
         }
-
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void RenderImage_NativeInitDelegates(NativeFreeDelegate b,
-                                                                   NativeWidthHeightDelegate c,
-                                                                   NativeWidthHeightDelegate d);
     }
 }

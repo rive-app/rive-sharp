@@ -18,8 +18,18 @@
     </dependencies>
   </metadata>
   <files>
+    <!-- native dlls -->
     <file src="..\native\bin\x86\release\rive.dll" target="runtimes/win10-x86/native"/>
     <file src="..\native\bin\x64\release\rive.dll" target="runtimes/win10-x64/native"/>
     <file src="..\native\bin\ARM64\release\rive.dll" target="runtimes/win10-ARM64/native"/>
+
+    <!-- wasm static library -->
+    <file src="..\native\bin\wasm\librive.a" target="build/netstandard2.0/rive.a" />
+
+    <!-- build integration for wasm static library -->
+    <file src="RiveSharp.props" target="build/netstandard2.0/Rive.RiveSharp.props" />
+    <file src="RiveSharp.props" target="buildTransitive/netstandard2.0/Rive.RiveSharp.props" />
+    <file src="RiveSharp.targets" target="build/netstandard2.0/Rive.RiveSharp.targets" />
+    <file src="RiveSharp.targets" target="buildTransitive/netstandard2.0/Rive.RiveSharp.targets" />
   </files>
 </package>

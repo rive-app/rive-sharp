@@ -40,7 +40,7 @@ project "rive"
     filter "configurations:Release"
         defines {"RELEASE"}
         defines {"NDEBUG"}
-        optimize "On"
+        optimize "Size"
 
     filter "platforms:x86"
         architecture "x86"

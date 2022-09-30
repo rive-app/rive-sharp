@@ -3,6 +3,7 @@
 using System;
 using System.Runtime.InteropServices;
 using SkiaSharp;
+using static RiveSharp.RiveAPI;
 
 namespace RiveSharp
 {
@@ -41,7 +42,38 @@ namespace RiveSharp
 
     public class Renderer
     {
-        static Renderer() => InitNativeDelegates();
+        static readonly RendererDelegates Delegates = new RendererDelegates
+        {
+            Save = SaveCallback,
+            Restore = RestoreCallback,
+            Transform = TransformCallback,
+            DrawPath = DrawPathCallback,
+            ClipPath = ClipPathCallback,
+            DrawImage = DrawImageCallback,
+            DrawImageMesh = DrawImageMeshCallback
+        };
+
+        static Renderer()
+        {
+            RiveAPI.Renderer_RegisterDelegates(Delegates);
+        }
+
+        public static unsafe Mat2D ComputeAlignment(Fit fit,
+                                                    Alignment alignment,
+                                                    AABB frame,
+                                                    AABB content)
+        {
+            var args = new RiveAPI.ComputeAlignmentArgs
+            {
+                Fit = (int)fit,
+                AlignX = alignment.X,
+                AlignY = alignment.Y,
+                Frame = frame,
+                Content = content
+            };
+            RiveAPI.Renderer_ComputeAlignment(&args);
+            return args.Matrix;
+        }
 
         public readonly SKCanvas SKCanvas;
 
@@ -113,81 +145,75 @@ namespace RiveSharp
             Transform(ComputeAlignment(fit, alignment, frame, content));
         }
 
-        public static Mat2D ComputeAlignment(Fit fit,
-                                             Alignment alignment,
-                                             AABB frame,
-                                             AABB content)
+        [MonoPInvokeCallback(typeof(RendererDelegates.SaveDelegate))]
+        static void SaveCallback(IntPtr @ref)
         {
-            Renderer_NativeComputeAlignment((int)fit, alignment.X, alignment.Y,
-                                            in frame, in content, out Mat2D m);
-            return m;
+            var renderer = RiveAPI.CastNativeRef<Renderer>(@ref);
+            renderer.Save();
         }
 
-        // Native interop.
-        private delegate void NativeSaveDelegate(IntPtr ptr);
-        private delegate void NativeRestoreDelegate(IntPtr ptr);
-        private delegate void NativeTransformDelegate(IntPtr ptr, in Mat2D mat);
-        private delegate void NativeDrawPathDelegate(IntPtr ptr, IntPtr pathPtr, IntPtr paintPtr);
-        private delegate void NativeClipPathDelegate(IntPtr ptr, IntPtr pathPtr);
-        private delegate void NativeDrawImageDelegate(IntPtr ptr,
-                                                      IntPtr imagePtr,
-                                                      int blendMode,
-                                                      float opacity);
-        private delegate void NativeDrawImageMeshDelegate(
-                IntPtr ptr,
-                IntPtr imagePtr,
-                [MarshalAs(UnmanagedType.LPArray, SizeParamIndex=4)]
-                SKPoint[] vertices,
-                [MarshalAs(UnmanagedType.LPArray, SizeParamIndex=4)]
-                SKPoint[] uvs,
-                int vertexFloatCount,
-                [MarshalAs(UnmanagedType.LPArray, SizeParamIndex=6)]
-                UInt16[] indices,
-                int indexCount,
-                int blendMode,
-                float opacity);
-
-        private static Renderer FromNative(IntPtr ptr)
+        [MonoPInvokeCallback(typeof(RendererDelegates.RestoreDelegate))]
+        static void RestoreCallback(IntPtr @ref)
         {
-            return (Renderer)GCHandle.FromIntPtr(ptr).Target;
+            var renderer = RiveAPI.CastNativeRef<Renderer>(@ref);
+            renderer.Restore();
         }
 
-        internal static void InitNativeDelegates()
+        [MonoPInvokeCallback(typeof(RendererDelegates.TransformDelegate))]
+        static void TransformCallback(IntPtr @ref,
+                                      float x1, float y1,
+                                      float x2, float y2,
+                                      float tx, float ty)
         {
-            Renderer_NativeInitDelegates(
-                (IntPtr ptr) => FromNative(ptr).Save(),
-                (IntPtr ptr) => FromNative(ptr).Restore(),
-                (IntPtr ptr, in Mat2D mat) => FromNative(ptr).Transform(mat),
-                (IntPtr ptr, IntPtr pathPtr, IntPtr paintPtr)
-                    => FromNative(ptr).DrawPath(RenderPath.FromNative(pathPtr),
-                                                RenderPaint.FromNative(paintPtr)),
-                (IntPtr ptr, IntPtr pathPtr)
-                    => FromNative(ptr).ClipPath(RenderPath.FromNative(pathPtr)),
-                (IntPtr ptr, IntPtr imagePtr, int blendMode, float opacity)
-                    => FromNative(ptr).DrawImage(RenderImage.FromNative(imagePtr),
-                                                 (BlendMode)blendMode, opacity),
-                (IntPtr ptr, IntPtr imagePtr, SKPoint[] vertices, SKPoint[] uvs,
-                 int vertexCount, UInt16[] indices, int indexCount, int blendMode, float opacity)
-                    => FromNative(ptr).DrawImageMesh(RenderImage.FromNative(imagePtr),
-                                                     vertices, uvs, indices,
-                                                     (BlendMode)blendMode, opacity));
+            var renderer = RiveAPI.CastNativeRef<Renderer>(@ref);
+            renderer.Transform(new Mat2D(x1, y1, x2, y2, tx, ty));
         }
 
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void Renderer_NativeInitDelegates(NativeSaveDelegate a,
-                                                                NativeRestoreDelegate b,
-                                                                NativeTransformDelegate c,
-                                                                NativeDrawPathDelegate d,
-                                                                NativeClipPathDelegate e,
-                                                                NativeDrawImageDelegate f,
-                                                                NativeDrawImageMeshDelegate g);
+        [MonoPInvokeCallback(typeof(RendererDelegates.DrawPathDelegate))]
+        static void DrawPathCallback(IntPtr @ref, IntPtr pathRef, IntPtr paintRef)
+        {
+            var renderer = RiveAPI.CastNativeRef<Renderer>(@ref);
+            var path = RiveAPI.CastNativeRef<RenderPath>(pathRef);
+            var paint = RiveAPI.CastNativeRef<RenderPaint>(paintRef);
+            renderer.DrawPath(path, paint);
+        }
 
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void Renderer_NativeComputeAlignment(int fit,
-                                                                   float alignX, float alignY,
-                                                                   in AABB frame,
-                                                                   in AABB content,
-                                                                   out Mat2D outMatrix);
+        [MonoPInvokeCallback(typeof(RendererDelegates.ClipPathDelegate))]
+        static void ClipPathCallback(IntPtr @ref, IntPtr pathRef)
+        {
+            var renderer = RiveAPI.CastNativeRef<Renderer>(@ref);
+            var path = RiveAPI.CastNativeRef<RenderPath>(pathRef);
+            renderer.ClipPath(path);
+        }
 
+        [MonoPInvokeCallback(typeof(RendererDelegates.DrawImageDelegate))]
+        static void DrawImageCallback(IntPtr @ref, IntPtr imageRef, int blendMode, float opacity)
+        {
+            var renderer = RiveAPI.CastNativeRef<Renderer>(@ref);
+            var image = RiveAPI.CastNativeRef<RenderImage>(imageRef);
+            renderer.DrawImage(image, (BlendMode)blendMode, opacity);
+        }
+
+        [MonoPInvokeCallback(typeof(RendererDelegates.DrawImageMeshDelegate))]
+        static void DrawImageMeshCallback(IntPtr @ref,
+                                          IntPtr imageRef,
+                                          IntPtr vertexArray,  // SKPoint[nVertices]
+                                          IntPtr uvArray,  // SKPoint[nVertices]
+                                          Int32 nVertices,
+                                          IntPtr indexArray,  // UInt16[nIndices]
+                                          Int32 nIndices,
+                                          Int32 blendMode,
+                                          float opacity)
+        {
+            var renderer = RiveAPI.CastNativeRef<Renderer>(@ref);
+            var image = RiveAPI.CastNativeRef<RenderImage>(imageRef);
+            var vertices = new SKPoint[nVertices];
+            RiveAPI.CopySKPointArray(vertexArray, vertices, nVertices);
+            var uvs = new SKPoint[nVertices];
+            RiveAPI.CopySKPointArray(uvArray, uvs, nVertices);
+            var indices = new UInt16[nIndices];
+            RiveAPI.CopyU16Array(indexArray, indices, nIndices);
+            renderer.DrawImageMesh(image, vertices, uvs, indices, (BlendMode)blendMode, opacity);
+        }
     }
 }

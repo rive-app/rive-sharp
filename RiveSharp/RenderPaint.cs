@@ -49,7 +49,23 @@ namespace RiveSharp
 
     public class RenderPaint
     {
-        static RenderPaint() => InitNativeDelegates();
+        static readonly RenderPaintDelegates Delegates = new RenderPaintDelegates
+        {
+            Release = RiveAPI.ReleaseNativeRefCallback,
+            Style = StyleCallback,
+            Color = ColorCallback,
+            LinearGradient = LinearGradientCallback,
+            RadialGradient = RadialGradientCallback,
+            Thickness = ThicknessCallback,
+            Join = JoinCallback,
+            Cap = CapCallback,
+            BlendMode = BlendModeCallback
+        };
+
+        static RenderPaint()
+        {
+            RiveAPI.RenderPaint_RegisterDelegates(Delegates);
+        }
 
         public readonly SKPaint SKPaint = new SKPaint
         {
@@ -153,63 +169,74 @@ namespace RiveSharp
         public StrokeCap Cap { set { SKPaint.StrokeCap = ToSKStrokeCap(value); } }
         public BlendMode BlendMode { set { SKPaint.BlendMode = ToSKBlendMode(value); } }
 
-        // Native interop.
-        private delegate void NativeFreeDelegate(IntPtr ptr);
-        private delegate void NativeStyleDelegate(IntPtr ptr, int style);
-        private delegate void NativeColorDelegate(IntPtr ptr, UInt32 color);
-        private delegate void NativeLinearGradientDelegate(
-                IntPtr ptr,
-                float sx, float sy,
-                float ex, float ey,
-                [MarshalAs(UnmanagedType.LPArray, SizeParamIndex=7)]
-                UInt32[] colors,
-                [MarshalAs(UnmanagedType.LPArray, SizeParamIndex=7)]
-                float[] stops,
-                int count);
-        private delegate void NativeRadialGradientDelegate(
-                IntPtr ptr,
-                float cx, float cy,
-                float radius,
-                [MarshalAs(UnmanagedType.LPArray, SizeParamIndex=6)]
-                UInt32[] colors,
-                [MarshalAs(UnmanagedType.LPArray, SizeParamIndex=6)]
-                float[] stops,
-                int count);
-        private delegate void NativeThicknessDelegate(IntPtr ptr, float thickness);
-        private delegate void NativeJoinDelegate(IntPtr ptr, int join);
-        private delegate void NativeCapDelegate(IntPtr ptr, int cap);
-        private delegate void NativeBlendModeDelegate(IntPtr ptr, int blendMode);
-
-        internal static RenderPaint FromNative(IntPtr ptr)
+        [MonoPInvokeCallback(typeof(RenderPaintDelegates.StyleDelegate))]
+        static void StyleCallback(IntPtr @ref, int style)
         {
-            return (RenderPaint)GCHandle.FromIntPtr(ptr).Target;
+            var renderPaint = RiveAPI.CastNativeRef<RenderPaint>(@ref);
+            renderPaint.Style = (RenderPaintStyle)style;
         }
 
-        internal static void InitNativeDelegates()
+        [MonoPInvokeCallback(typeof(RenderPaintDelegates.ColorDelegate))]
+        static void ColorCallback(IntPtr @ref, UInt32 color)
         {
-            RenderPaint_NativeInitDelegates(
-                (IntPtr ptr) => GCHandle.FromIntPtr(ptr).Free(),
-                (IntPtr ptr, int style) => FromNative(ptr).Style = (RenderPaintStyle)style,
-                (IntPtr ptr, UInt32 color) => FromNative(ptr).Color = color,
-                (IntPtr ptr, float sx, float sy, float ex, float ey, UInt32[] c, float[] s, int n)
-                    => FromNative(ptr).LinearGradient(sx, sy, ex, ey, c, s),
-                (IntPtr ptr, float cx, float cy, float radius, UInt32[] c, float[] s, int n)
-                    => FromNative(ptr).RadialGradient(cx, cy, radius, c, s),
-                (IntPtr ptr, float thickness) => FromNative(ptr).Thickness = thickness,
-                (IntPtr ptr, int join) => FromNative(ptr).Join = (StrokeJoin)join,
-                (IntPtr ptr, int cap) => FromNative(ptr).Cap = (StrokeCap)cap,
-                (IntPtr ptr, int blendMode) => FromNative(ptr).BlendMode = (BlendMode)blendMode);
+            var renderPaint = RiveAPI.CastNativeRef<RenderPaint>(@ref);
+            renderPaint.Color = color;
         }
 
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void RenderPaint_NativeInitDelegates(NativeFreeDelegate b,
-                                                                   NativeStyleDelegate c,
-                                                                   NativeColorDelegate d,
-                                                                   NativeLinearGradientDelegate e,
-                                                                   NativeRadialGradientDelegate f,
-                                                                   NativeThicknessDelegate g,
-                                                                   NativeJoinDelegate h,
-                                                                   NativeCapDelegate i,
-                                                                   NativeBlendModeDelegate j);
+        [MonoPInvokeCallback(typeof(RenderPaintDelegates.LinearGradientDelegate))]
+        static void LinearGradientCallback(IntPtr @ref,
+                                           float sx, float sy,
+                                           float ex, float ey,
+                                           IntPtr colorsArray, IntPtr stopsArray, int n)
+        {
+            var renderPaint = RiveAPI.CastNativeRef<RenderPaint>(@ref);
+            var colors = new UInt32[n];
+            RiveAPI.CopyU32Array(colorsArray, colors, n);
+            var stops = new float[n];
+            Marshal.Copy(stopsArray, stops, 0, n);
+            renderPaint.LinearGradient(sx, sy, ex, ey, colors, stops);
+        }
+
+        [MonoPInvokeCallback(typeof(RenderPaintDelegates.RadialGradientDelegate))]
+        static void RadialGradientCallback(IntPtr @ref,
+                                           float cx, float cy,
+                                           float radius,
+                                           IntPtr colorsArray, IntPtr stopsArray, int n)
+        {
+            var renderPaint = RiveAPI.CastNativeRef<RenderPaint>(@ref);
+            var colors = new UInt32[n];
+            RiveAPI.CopyU32Array(colorsArray, colors, n);
+            var stops = new float[n];
+            Marshal.Copy(stopsArray, stops, 0, n);
+            renderPaint.RadialGradient(cx, cy, radius, colors, stops);
+        }
+
+        [MonoPInvokeCallback(typeof(RenderPaintDelegates.ThicknessDelegate))]
+        static void ThicknessCallback(IntPtr @ref, float thickness)
+        {
+            var renderPaint = RiveAPI.CastNativeRef<RenderPaint>(@ref);
+            renderPaint.Thickness = thickness;
+        }
+
+        [MonoPInvokeCallback(typeof(RenderPaintDelegates.JoinDelegate))]
+        static void JoinCallback(IntPtr @ref, int join)
+        {
+            var renderPaint = RiveAPI.CastNativeRef<RenderPaint>(@ref);
+            renderPaint.Join = (StrokeJoin)join;
+        }
+
+        [MonoPInvokeCallback(typeof(RenderPaintDelegates.CapDelegate))]
+        static void CapCallback(IntPtr @ref, int cap)
+        {
+            var renderPaint = RiveAPI.CastNativeRef<RenderPaint>(@ref);
+            renderPaint.Cap = (StrokeCap)cap;
+        }
+
+        [MonoPInvokeCallback(typeof(RenderPaintDelegates.BlendModeDelegate))]
+        static void BlendModeCallback(IntPtr @ref, int blendMode)
+        {
+            var renderPaint = RiveAPI.CastNativeRef<RenderPaint>(@ref);
+            renderPaint.BlendMode = (BlendMode)blendMode;
+        }
     }
 }

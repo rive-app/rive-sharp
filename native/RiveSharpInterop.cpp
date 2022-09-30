@@ -7,7 +7,6 @@
 #include "rive/animation/state_machine_instance.hpp"
 #include "rive/artboard.hpp"
 #include "rive/renderer.hpp"
-#include <comutil.h>
 
 using namespace rive;
 
@@ -34,182 +33,185 @@ static void msgbox(const char* format, ...) {
 }
 #endif
 
+#ifndef WASM
+#define RIVE_DLL extern "C" __declspec(dllexport) __cdecl
+#else
+#define RIVE_DLL extern "C" __attribute__((visibility("default"))) __cdecl
+#endif
+
 // Native P/Invoke functions may only return "blittable" types. To protect from inadvertently
 // returning an invalid type, we explicitly enumerate valid return types here. See:
 // https://docs.microsoft.com/en-us/dotnet/framework/interop/blittable-and-non-blittable-types
-#define RIVE_DLL_VOID extern "C" __declspec(dllexport) void __cdecl
-#define RIVE_DLL_INT8_BOOL extern "C" __declspec(dllexport) int8_t __cdecl
-#define RIVE_DLL_INT32 extern "C" __declspec(dllexport) int32_t __cdecl
-#define RIVE_DLL_FLOAT extern "C" __declspec(dllexport) float __cdecl
-#define RIVE_DLL_INTPTR extern "C" __declspec(dllexport) intptr_t __cdecl
-#define RIVE_DLL_BSTR extern "C" __declspec(dllexport) BSTR __cdecl
+#define RIVE_DLL_VOID RIVE_DLL void
+#define RIVE_DLL_INT8_BOOL RIVE_DLL int8_t
+#define RIVE_DLL_INT32 RIVE_DLL int32_t
+#define RIVE_DLL_FLOAT RIVE_DLL float
+#define RIVE_DLL_INTPTR RIVE_DLL intptr_t
 
-// Reverse P/Invoke Function pointers back into managed code are __stdcall and may also only return
-// blittable types.
-#define RIVE_DELEGATE_VOID void(__stdcall*)
-#define RIVE_DELEGATE_INTPTR intptr_t(__stdcall*)
-#define RIVE_DELEGATE_INT32 int32_t(__stdcall*)
+// Reverse P/Invoke Function pointers back into managed code are also __cdecl and may also only
+// return blittable types.
+#define RIVE_DELEGATE_VOID(NAME, ...) void(__cdecl * NAME)(__VA_ARGS__)
+#define RIVE_DELEGATE_INTPTR(NAME, ...) intptr_t(__cdecl* NAME)(__VA_ARGS__)
+#define RIVE_DELEGATE_INT32(NAME, ...) int32_t(__cdecl* NAME)(__VA_ARGS__)
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-RIVE_DLL_VOID Mat2D_Multiply(const Mat2D& a, const Mat2D& b, Mat2D& out) { out = a * b; }
-RIVE_DLL_VOID Mat2D_MultiplyVec2D(const Mat2D& a, const Vec2D& b, Vec2D& out) { out = a * b; }
-RIVE_DLL_INT8_BOOL Mat2D_Invert(const Mat2D& a, Mat2D& out) { return a.invert(&out); }
+RIVE_DLL_VOID CopySKPointArray(intptr_t sourceArray, Vec2D* destination, int32_t count) {
+    const Vec2D* source = reinterpret_cast<const Vec2D*>(sourceArray);
+    memcpy(destination, source, count * sizeof(Vec2D));
+}
+
+RIVE_DLL_VOID CopyU32Array(intptr_t sourceArray, uint32_t* destination, int32_t count) {
+    const uint32_t* source = reinterpret_cast<const uint32_t*>(sourceArray);
+    memcpy(destination, source, count * sizeof(uint32_t));
+}
+
+RIVE_DLL_VOID CopyU16Array(intptr_t sourceArray, uint16_t* destination, int32_t count) {
+    const uint16_t* source = reinterpret_cast<const uint16_t*>(sourceArray);
+    memcpy(destination, source, count * sizeof(uint16_t));
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+RIVE_DLL_VOID Mat2D_Multiply(Mat2D a, Mat2D b, Mat2D* out) { *out = a * b; }
+RIVE_DLL_VOID Mat2D_MultiplyVec2D(Mat2D a, Vec2D b, Vec2D* out) { *out = a * b; }
+RIVE_DLL_INT8_BOOL Mat2D_Invert(Mat2D a, Mat2D* out) { return a.invert(out); }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class RenderPathSharp : public RenderPath {
 public:
-    using FreeDelegate = RIVE_DELEGATE_VOID(intptr_t ptr);
-    using ResetDelegate = RIVE_DELEGATE_VOID(intptr_t ptr);
-    using AddRenderPathDelegate = RIVE_DELEGATE_VOID(intptr_t ptr, intptr_t path, const Mat2D&);
-    using FillRuleDelegate = RIVE_DELEGATE_VOID(intptr_t ptr, int rule);
-    using MoveToDelegate = RIVE_DELEGATE_VOID(intptr_t ptr, float x, float y);
-    using LineToDelegate = RIVE_DELEGATE_VOID(intptr_t ptr, float x, float y);
-    using QuadToDelegate = RIVE_DELEGATE_VOID(intptr_t ptr, float ox, float oy, float x, float y);
-    using CubicToDelegate =
-        RIVE_DELEGATE_VOID(intptr_t ptr, float ox, float oy, float ix, float iy, float x, float y);
-    using CloseDelegate = RIVE_DELEGATE_VOID(intptr_t ptr);
+    struct Delegates {
+        RIVE_DELEGATE_VOID(release, intptr_t ref);
+        RIVE_DELEGATE_VOID(reset, intptr_t ref);
+        RIVE_DELEGATE_VOID(addRenderPath,
+                           intptr_t ref,
+                           intptr_t path,
+                           float,
+                           float,
+                           float,
+                           float,
+                           float,
+                           float);
+        RIVE_DELEGATE_VOID(fillRule, intptr_t ref, int rule);
+        RIVE_DELEGATE_VOID(moveTo, intptr_t ref, float x, float y);
+        RIVE_DELEGATE_VOID(lineTo, intptr_t ref, float x, float y);
+        RIVE_DELEGATE_VOID(quadTo, intptr_t ref, float ox, float oy, float x, float y);
+        RIVE_DELEGATE_VOID(cubicTo,
+                           intptr_t ref,
+                           float ox,
+                           float oy,
+                           float ix,
+                           float iy,
+                           float x,
+                           float y);
+        RIVE_DELEGATE_VOID(close, intptr_t ref);
+    };
 
-    static FreeDelegate ManagedFree;
-    static ResetDelegate ManagedReset;
-    static AddRenderPathDelegate ManagedAddRenderPath;
-    static FillRuleDelegate ManagedFillRule;
-    static MoveToDelegate ManagedMoveTo;
-    static LineToDelegate ManagedLineTo;
-    static QuadToDelegate ManagedQuadTo;
-    static CubicToDelegate ManagedCubicTo;
-    static CloseDelegate ManagedClose;
+    static Delegates s_delegates;
 
-    RenderPathSharp(intptr_t managedPtr) : m_ManagedPtr(managedPtr) {}
+    RenderPathSharp(intptr_t managedRef) : m_ref(managedRef) {}
     RenderPathSharp(const RenderPathSharp&) = delete;
     RenderPathSharp& operator=(const RenderPathSharp&) = delete;
-    ~RenderPathSharp() { ManagedFree(m_ManagedPtr); };
+    ~RenderPathSharp() { s_delegates.release(m_ref); };
 
-    void reset() override { ManagedReset(m_ManagedPtr); }
-    void fillRule(FillRule value) override { ManagedFillRule(m_ManagedPtr, (int)value); }
+    void reset() override { s_delegates.reset(m_ref); }
+    void fillRule(FillRule value) override { s_delegates.fillRule(m_ref, (int)value); }
     void addRenderPath(RenderPath* path, const Mat2D& m) override {
-        ManagedAddRenderPath(m_ManagedPtr, static_cast<RenderPathSharp*>(path)->m_ManagedPtr, m);
+        s_delegates.addRenderPath(m_ref,
+                                  static_cast<RenderPathSharp*>(path)->m_ref,
+                                  m.xx(),
+                                  m.xy(),
+                                  m.yx(),
+                                  m.yy(),
+                                  m.tx(),
+                                  m.ty());
     }
-    void moveTo(float x, float y) override { ManagedMoveTo(m_ManagedPtr, x, y); }
-    void lineTo(float x, float y) override { ManagedLineTo(m_ManagedPtr, x, y); }
+    void moveTo(float x, float y) override { s_delegates.moveTo(m_ref, x, y); }
+    void lineTo(float x, float y) override { s_delegates.lineTo(m_ref, x, y); }
     void cubicTo(float ox, float oy, float ix, float iy, float x, float y) override {
-        ManagedCubicTo(m_ManagedPtr, ox, oy, ix, iy, x, y);
+        s_delegates.cubicTo(m_ref, ox, oy, ix, iy, x, y);
     }
-    void close() override { ManagedClose(m_ManagedPtr); }
+    void close() override { s_delegates.close(m_ref); }
 
     // not an override, but needed for makeRenderPath
-    void quadTo(float ox, float oy, float x, float y) { ManagedQuadTo(m_ManagedPtr, ox, oy, x, y); }
+    void quadTo(float ox, float oy, float x, float y) { s_delegates.quadTo(m_ref, ox, oy, x, y); }
 
-    const intptr_t m_ManagedPtr;
+    const intptr_t m_ref;
 };
 
-RenderPathSharp::FreeDelegate RenderPathSharp::ManagedFree;
-RenderPathSharp::ResetDelegate RenderPathSharp::ManagedReset;
-RenderPathSharp::AddRenderPathDelegate RenderPathSharp::ManagedAddRenderPath;
-RenderPathSharp::FillRuleDelegate RenderPathSharp::ManagedFillRule;
-RenderPathSharp::MoveToDelegate RenderPathSharp::ManagedMoveTo;
-RenderPathSharp::LineToDelegate RenderPathSharp::ManagedLineTo;
-RenderPathSharp::QuadToDelegate RenderPathSharp::ManagedQuadTo;
-RenderPathSharp::CubicToDelegate RenderPathSharp::ManagedCubicTo;
-RenderPathSharp::CloseDelegate RenderPathSharp::ManagedClose;
+RenderPathSharp::Delegates RenderPathSharp::s_delegates{};
 
-RIVE_DLL_VOID
-RenderPath_NativeInitDelegates(RenderPathSharp::FreeDelegate managedFree,
-                               RenderPathSharp::ResetDelegate managedReset,
-                               RenderPathSharp::AddRenderPathDelegate managedAddRenderPath,
-                               RenderPathSharp::FillRuleDelegate managedFillRule,
-                               RenderPathSharp::MoveToDelegate managedMoveTo,
-                               RenderPathSharp::LineToDelegate managedLineTo,
-                               RenderPathSharp::QuadToDelegate managedQuadTo,
-                               RenderPathSharp::CubicToDelegate managedCubicTo,
-                               RenderPathSharp::CloseDelegate managedClose) {
-    RenderPathSharp::ManagedFree = managedFree;
-    RenderPathSharp::ManagedReset = managedReset;
-    RenderPathSharp::ManagedAddRenderPath = managedAddRenderPath;
-    RenderPathSharp::ManagedFillRule = managedFillRule;
-    RenderPathSharp::ManagedMoveTo = managedMoveTo;
-    RenderPathSharp::ManagedLineTo = managedLineTo;
-    RenderPathSharp::ManagedQuadTo = managedQuadTo;
-    RenderPathSharp::ManagedCubicTo = managedCubicTo;
-    RenderPathSharp::ManagedClose = managedClose;
+RIVE_DLL_VOID RenderPath_RegisterDelegates(RenderPathSharp::Delegates delegates) {
+    RenderPathSharp::s_delegates = delegates;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class RenderImageSharp : public RenderImage {
 public:
-    using FreeDelegate = RIVE_DELEGATE_VOID(intptr_t);
-    using WidthHeightDelegate = RIVE_DELEGATE_INT32(intptr_t);
+    struct Delegates {
+        RIVE_DELEGATE_VOID(release, intptr_t ref);
+        RIVE_DELEGATE_INT32(width, intptr_t ref);
+        RIVE_DELEGATE_INT32(height, intptr_t ref);
+    };
 
-    static FreeDelegate ManagedFree;
-    static WidthHeightDelegate ManagedWidth;
-    static WidthHeightDelegate ManagedHeight;
+    static Delegates s_delegates;
 
-    RenderImageSharp(intptr_t managedPtr) : m_ManagedPtr(managedPtr) {
-        m_Width = ManagedWidth(m_ManagedPtr);
-        m_Height = ManagedHeight(m_ManagedPtr);
+    RenderImageSharp(intptr_t managedRef) : m_ref(managedRef) {
+        m_Width = s_delegates.width(m_ref);
+        m_Height = s_delegates.height(m_ref);
     }
     RenderImageSharp(const RenderImageSharp&) = delete;
     RenderImageSharp& operator=(const RenderImageSharp&) = delete;
-    ~RenderImageSharp() { ManagedFree(m_ManagedPtr); };
+    ~RenderImageSharp() { s_delegates.release(m_ref); };
 
-    const intptr_t m_ManagedPtr;
+    const intptr_t m_ref;
 };
 
-RenderImageSharp::FreeDelegate RenderImageSharp::ManagedFree;
-RenderImageSharp::WidthHeightDelegate RenderImageSharp::ManagedWidth;
-RenderImageSharp::WidthHeightDelegate RenderImageSharp::ManagedHeight;
+RenderImageSharp::Delegates RenderImageSharp::s_delegates{};
 
-RIVE_DLL_VOID RenderImage_NativeInitDelegates(RenderImageSharp::FreeDelegate managedFree,
-                                              RenderImageSharp::WidthHeightDelegate managedWidth,
-                                              RenderImageSharp::WidthHeightDelegate managedHeight) {
-    RenderImageSharp::ManagedFree = managedFree;
-    RenderImageSharp::ManagedWidth = managedWidth;
-    RenderImageSharp::ManagedHeight = managedHeight;
+RIVE_DLL_VOID RenderImage_RegisterDelegates(RenderImageSharp::Delegates delegates) {
+    RenderImageSharp::s_delegates = delegates;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class RenderPaintSharp : public RenderPaint {
 public:
-    using FreeDelegate = RIVE_DELEGATE_VOID(intptr_t);
-    using StyleDelegate = RIVE_DELEGATE_VOID(intptr_t, int style);
-    using ColorDelegate = RIVE_DELEGATE_VOID(intptr_t, uint32_t color);
-    using LinearGradientDelegate = RIVE_DELEGATE_VOID(intptr_t,
-                                                      float sx,
-                                                      float sy,
-                                                      float ex,
-                                                      float ey,
-                                                      const uint32_t colors[],
-                                                      const float stops[],
-                                                      int count);
-    using RadialGradientDelegate = RIVE_DELEGATE_VOID(intptr_t,
-                                                      float cx,
-                                                      float cy,
-                                                      float radius,
-                                                      const uint32_t colors[],
-                                                      const float stops[],
-                                                      int count);
-    using ThicknessDelegate = RIVE_DELEGATE_VOID(intptr_t, float thickness);
-    using JoinDelegate = RIVE_DELEGATE_VOID(intptr_t, int join);
-    using CapDelegate = RIVE_DELEGATE_VOID(intptr_t, int cap);
-    using BlendModeDelegate = RIVE_DELEGATE_VOID(intptr_t, int blendMode);
+    struct Delegates {
+        RIVE_DELEGATE_VOID(release, intptr_t ref);
+        RIVE_DELEGATE_VOID(style, intptr_t ref, int style);
+        RIVE_DELEGATE_VOID(color, intptr_t ref, uint32_t color);
+        RIVE_DELEGATE_VOID(linearGradient,
+                           intptr_t ref,
+                           float sx,
+                           float sy,
+                           float ex,
+                           float ey,
+                           const uint32_t colors[],
+                           const float stops[],
+                           int count);
+        RIVE_DELEGATE_VOID(radialGradient,
+                           intptr_t ref,
+                           float cx,
+                           float cy,
+                           float radius,
+                           const uint32_t colors[],
+                           const float stops[],
+                           int count);
+        RIVE_DELEGATE_VOID(thickness, intptr_t ref, float thickness);
+        RIVE_DELEGATE_VOID(join, intptr_t ref, int join);
+        RIVE_DELEGATE_VOID(cap, intptr_t ref, int cap);
+        RIVE_DELEGATE_VOID(blendMode, intptr_t ref, int blendMode);
+    };
 
-    static FreeDelegate ManagedFree;
-    static StyleDelegate ManagedStyle;
-    static ColorDelegate ManagedColor;
-    static LinearGradientDelegate ManagedLinearGradient;
-    static RadialGradientDelegate ManagedRadialGradient;
-    static ThicknessDelegate ManagedThickness;
-    static JoinDelegate ManagedJoin;
-    static CapDelegate ManagedCap;
-    static BlendModeDelegate ManagedBlendMode;
+    static Delegates s_delegates;
 
-    RenderPaintSharp(intptr_t managedPtr) : m_ManagedPtr(managedPtr) {}
+    RenderPaintSharp(intptr_t managedRef) : m_ref(managedRef) {}
     RenderPaintSharp(const RenderPaintSharp&) = delete;
     RenderPaintSharp& operator=(const RenderPaintSharp&) = delete;
-    ~RenderPaintSharp() { ManagedFree(m_ManagedPtr); };
+    ~RenderPaintSharp() { s_delegates.release(m_ref); };
 
     struct Shader : public RenderShader {
         virtual void apply(intptr_t) const = 0;
@@ -224,15 +226,15 @@ public:
                              const float stops[],
                              int n) :
             sx(sx), sy(sy), ex(ex), ey(ey), colors(colors, colors + n), stops(stops, stops + n) {}
-        void apply(intptr_t ptr) const override {
-            ManagedLinearGradient(ptr,
-                                  sx,
-                                  sy,
-                                  ex,
-                                  ey,
-                                  colors.data(),
-                                  stops.data(),
-                                  (int)colors.size());
+        void apply(intptr_t ref) const override {
+            s_delegates.linearGradient(ref,
+                                       sx,
+                                       sy,
+                                       ex,
+                                       ey,
+                                       colors.data(),
+                                       stops.data(),
+                                       (int)colors.size());
         }
         const float sx, sy;
         const float ex, ey;
@@ -248,14 +250,14 @@ public:
                              const float stops[],
                              int n) :
             cx(cx), cy(cy), radius(radius), colors(colors, colors + n), stops(stops, stops + n) {}
-        void apply(intptr_t ptr) const override {
-            ManagedRadialGradient(ptr,
-                                  cx,
-                                  cy,
-                                  radius,
-                                  colors.data(),
-                                  stops.data(),
-                                  (int)colors.size());
+        void apply(intptr_t ref) const override {
+            s_delegates.radialGradient(ref,
+                                       cx,
+                                       cy,
+                                       radius,
+                                       colors.data(),
+                                       stops.data(),
+                                       (int)colors.size());
         }
         const float cx, cy;
         const float radius;
@@ -263,47 +265,22 @@ public:
         const std::vector<float> stops;
     };
 
-    void style(RenderPaintStyle style) override { ManagedStyle(m_ManagedPtr, (int)style); }
-    void color(uint32_t value) override { ManagedColor(m_ManagedPtr, value); }
-    void thickness(float value) override { ManagedThickness(m_ManagedPtr, value); }
-    void join(StrokeJoin value) override { ManagedJoin(m_ManagedPtr, (int)value); }
-    void cap(StrokeCap value) override { ManagedCap(m_ManagedPtr, (int)value); }
-    void blendMode(BlendMode value) override { ManagedBlendMode(m_ManagedPtr, (int)value); }
-    void shader(rcp<RenderShader> shader) override { ((Shader*)shader.get())->apply(m_ManagedPtr); }
+    void style(RenderPaintStyle style) override { s_delegates.style(m_ref, (int)style); }
+    void color(uint32_t value) override { s_delegates.color(m_ref, value); }
+    void thickness(float value) override { s_delegates.thickness(m_ref, value); }
+    void join(StrokeJoin value) override { s_delegates.join(m_ref, (int)value); }
+    void cap(StrokeCap value) override { s_delegates.cap(m_ref, (int)value); }
+    void blendMode(BlendMode value) override { s_delegates.blendMode(m_ref, (int)value); }
+    void shader(rcp<RenderShader> shader) override { ((Shader*)shader.get())->apply(m_ref); }
     void invalidateStroke() override {}
 
-    const intptr_t m_ManagedPtr;
+    const intptr_t m_ref;
 };
 
-RenderPaintSharp::FreeDelegate RenderPaintSharp::ManagedFree;
-RenderPaintSharp::StyleDelegate RenderPaintSharp::ManagedStyle;
-RenderPaintSharp::ColorDelegate RenderPaintSharp::ManagedColor;
-RenderPaintSharp::LinearGradientDelegate RenderPaintSharp::ManagedLinearGradient;
-RenderPaintSharp::RadialGradientDelegate RenderPaintSharp::ManagedRadialGradient;
-RenderPaintSharp::ThicknessDelegate RenderPaintSharp::ManagedThickness;
-RenderPaintSharp::JoinDelegate RenderPaintSharp::ManagedJoin;
-RenderPaintSharp::CapDelegate RenderPaintSharp::ManagedCap;
-RenderPaintSharp::BlendModeDelegate RenderPaintSharp::ManagedBlendMode;
+RenderPaintSharp::Delegates RenderPaintSharp::s_delegates{};
 
-RIVE_DLL_VOID
-RenderPaint_NativeInitDelegates(RenderPaintSharp::FreeDelegate managedFree,
-                                RenderPaintSharp::StyleDelegate managedStyle,
-                                RenderPaintSharp::ColorDelegate managedColor,
-                                RenderPaintSharp::LinearGradientDelegate managedLinearGradient,
-                                RenderPaintSharp::RadialGradientDelegate managedRadialGradient,
-                                RenderPaintSharp::ThicknessDelegate managedThickness,
-                                RenderPaintSharp::JoinDelegate managedJoin,
-                                RenderPaintSharp::CapDelegate managedCap,
-                                RenderPaintSharp::BlendModeDelegate managedBlendMode) {
-    RenderPaintSharp::ManagedFree = managedFree;
-    RenderPaintSharp::ManagedStyle = managedStyle;
-    RenderPaintSharp::ManagedColor = managedColor;
-    RenderPaintSharp::ManagedLinearGradient = managedLinearGradient;
-    RenderPaintSharp::ManagedRadialGradient = managedRadialGradient;
-    RenderPaintSharp::ManagedThickness = managedThickness;
-    RenderPaintSharp::ManagedJoin = managedJoin;
-    RenderPaintSharp::ManagedCap = managedCap;
-    RenderPaintSharp::ManagedBlendMode = managedBlendMode;
+RIVE_DLL_VOID RenderPaint_RegisterDelegates(RenderPaintSharp::Delegates delegates) {
+    RenderPaintSharp::s_delegates = delegates;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -324,53 +301,49 @@ private:
 
 class RendererSharp : public Renderer {
 public:
-    using SaveDelegate = RIVE_DELEGATE_VOID(intptr_t);
-    using RestoreDelegate = RIVE_DELEGATE_VOID(intptr_t);
-    using TransformDelegate = RIVE_DELEGATE_VOID(intptr_t, const Mat2D&);
-    using DrawPathDelegate = RIVE_DELEGATE_VOID(intptr_t, intptr_t path, intptr_t paint);
-    using ClipPathDelegate = RIVE_DELEGATE_VOID(intptr_t, intptr_t path);
-    using DrawImageDelegate = RIVE_DELEGATE_VOID(intptr_t,
-                                                 intptr_t image,
-                                                 int blendMode,
-                                                 float opacity);
-    using DrawImageMeshDelegate = RIVE_DELEGATE_VOID(intptr_t,
-                                                     intptr_t image,
-                                                     const float* vertices,
-                                                     const float* texcoords,
-                                                     int vertexCount,
-                                                     const uint16_t* indices,
-                                                     int indexCount,
-                                                     int blendMode,
-                                                     float opacity);
+    struct Delegates {
+        RIVE_DELEGATE_VOID(save, intptr_t ref);
+        RIVE_DELEGATE_VOID(restore, intptr_t ref);
+        RIVE_DELEGATE_VOID(transform, intptr_t ref, float, float, float, float, float, float);
+        RIVE_DELEGATE_VOID(drawPath, intptr_t ref, intptr_t path, intptr_t paint);
+        RIVE_DELEGATE_VOID(clipPath, intptr_t ref, intptr_t path);
+        RIVE_DELEGATE_VOID(drawImage, intptr_t ref, intptr_t image, int blendMode, float opacity);
+        RIVE_DELEGATE_VOID(drawImageMesh,
+                           intptr_t ref,
+                           intptr_t image,
+                           const float* vertices,
+                           const float* texcoords,
+                           int vertexCount,
+                           const uint16_t* indices,
+                           int indexCount,
+                           int blendMode,
+                           float opacity);
+    };
 
-    static SaveDelegate ManagedSave;
-    static RestoreDelegate ManagedRestore;
-    static TransformDelegate ManagedTransform;
-    static DrawPathDelegate ManagedDrawPath;
-    static ClipPathDelegate ManagedClipPath;
-    static DrawImageDelegate ManagedDrawImage;
-    static DrawImageMeshDelegate ManagedDrawImageMesh;
+    static Delegates s_delegates;
 
-    RendererSharp(intptr_t managedPtr) : m_ManagedPtr(managedPtr) {}
+    RendererSharp(intptr_t managedRef) : m_ref(managedRef) {}
     RendererSharp(const RendererSharp&) = delete;
     RendererSharp& operator=(const RendererSharp&) = delete;
 
-    void save() override { ManagedSave(m_ManagedPtr); }
-    void restore() override { ManagedRestore(m_ManagedPtr); }
-    void transform(const Mat2D& m) override { ManagedTransform(m_ManagedPtr, m); }
+    void save() override { s_delegates.save(m_ref); }
+    void restore() override { s_delegates.restore(m_ref); }
+    void transform(const Mat2D& m) override {
+        s_delegates.transform(m_ref, m.xx(), m.xy(), m.yx(), m.yy(), m.tx(), m.ty());
+    }
     void drawPath(RenderPath* path, RenderPaint* paint) override {
-        ManagedDrawPath(m_ManagedPtr,
-                        static_cast<RenderPathSharp*>(path)->m_ManagedPtr,
-                        static_cast<RenderPaintSharp*>(paint)->m_ManagedPtr);
+        s_delegates.drawPath(m_ref,
+                             static_cast<RenderPathSharp*>(path)->m_ref,
+                             static_cast<RenderPaintSharp*>(paint)->m_ref);
     }
     void clipPath(RenderPath* path) override {
-        ManagedClipPath(m_ManagedPtr, static_cast<RenderPathSharp*>(path)->m_ManagedPtr);
+        s_delegates.clipPath(m_ref, static_cast<RenderPathSharp*>(path)->m_ref);
     }
     void drawImage(const RenderImage* image, BlendMode blendMode, float opacity) override {
-        ManagedDrawImage(m_ManagedPtr,
-                         static_cast<const RenderImageSharp*>(image)->m_ManagedPtr,
-                         (int)blendMode,
-                         opacity);
+        s_delegates.drawImage(m_ref,
+                              static_cast<const RenderImageSharp*>(image)->m_ref,
+                              (int)blendMode,
+                              opacity);
     }
     void drawImageMesh(const RenderImage* image,
                        rcp<RenderBuffer> vertices_f32,
@@ -393,9 +366,9 @@ public:
             denormUVs[i + 1] = uvs[i + 1] * h;
         }
 
-        ManagedDrawImageMesh(
-            m_ManagedPtr,
-            static_cast<const RenderImageSharp*>(image)->m_ManagedPtr,
+        s_delegates.drawImageMesh(
+            m_ref,
+            static_cast<const RenderImageSharp*>(image)->m_ref,
             static_cast<const RenderBufferSharp<float>*>(vertices_f32.get())->data(),
             denormUVs.data(),
             (int)vertices_f32->count() / 2,
@@ -406,65 +379,53 @@ public:
     }
 
 private:
-    intptr_t m_ManagedPtr;
+    intptr_t m_ref;
 };
 
-RendererSharp::SaveDelegate RendererSharp::ManagedSave;
-RendererSharp::RestoreDelegate RendererSharp::ManagedRestore;
-RendererSharp::TransformDelegate RendererSharp::ManagedTransform;
-RendererSharp::DrawPathDelegate RendererSharp::ManagedDrawPath;
-RendererSharp::ClipPathDelegate RendererSharp::ManagedClipPath;
-RendererSharp::DrawImageDelegate RendererSharp::ManagedDrawImage;
-RendererSharp::DrawImageMeshDelegate RendererSharp::ManagedDrawImageMesh;
+RendererSharp::Delegates RendererSharp::s_delegates{};
 
-RIVE_DLL_VOID
-Renderer_NativeInitDelegates(RendererSharp::SaveDelegate managedSave,
-                             RendererSharp::RestoreDelegate managedRestore,
-                             RendererSharp::TransformDelegate managedTransform,
-                             RendererSharp::DrawPathDelegate managedDrawPath,
-                             RendererSharp::ClipPathDelegate managedClipPath,
-                             RendererSharp::DrawImageDelegate managedDrawImage,
-                             RendererSharp::DrawImageMeshDelegate managedDrawImageMesh) {
-    RendererSharp::ManagedSave = managedSave;
-    RendererSharp::ManagedRestore = managedRestore;
-    RendererSharp::ManagedTransform = managedTransform;
-    RendererSharp::ManagedDrawPath = managedDrawPath;
-    RendererSharp::ManagedClipPath = managedClipPath;
-    RendererSharp::ManagedDrawImage = managedDrawImage;
-    RendererSharp::ManagedDrawImageMesh = managedDrawImageMesh;
+RIVE_DLL_VOID Renderer_RegisterDelegates(RendererSharp::Delegates delegates) {
+    RendererSharp::s_delegates = delegates;
 }
 
-RIVE_DLL_VOID Renderer_NativeComputeAlignment(int fit,
-                                              float alignX,
-                                              float alignY,
-                                              const AABB& frame,
-                                              const AABB& content,
-                                              Mat2D& outMatrix) {
-    outMatrix = computeAlignment((Fit)fit, Alignment(alignX, alignY), frame, content);
+struct ComputeAlignmentArgs {
+    int32_t fit;
+    float alignX;
+    float alignY;
+    AABB frame;
+    AABB content;
+    Mat2D matrix;
+};
+
+RIVE_DLL_VOID Renderer_ComputeAlignment(ComputeAlignmentArgs* args) {
+    args->matrix = computeAlignment((Fit)args->fit,
+                                    Alignment(args->alignX, args->alignY),
+                                    args->frame,
+                                    args->content);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
 class FactorySharp : public Factory {
 public:
-    using FreeDelegate = RIVE_DELEGATE_VOID(intptr_t ptr);
-    using MakeRenderPathDelegate = RIVE_DELEGATE_INTPTR(intptr_t ptr,
-                                                        const Vec2D*,
-                                                        int nPts,
-                                                        const PathVerb*,
-                                                        int nVerbs,
-                                                        int fillRule);
-    using MakeEmptyObjectDelegate = RIVE_DELEGATE_INTPTR(intptr_t ptr);
-    using DecodeImageDelegate = RIVE_DELEGATE_INTPTR(intptr_t ptr, const uint8_t* bytes, int n);
+    struct Delegates {
+        RIVE_DELEGATE_VOID(release, intptr_t ref);
+        RIVE_DELEGATE_INTPTR(makeRenderPath,
+                             intptr_t ref,
+                             intptr_t ptsArray, // Vec2D/SkPoint[nPts]
+                             int nPts,
+                             intptr_t verbsArray, // uint8_t/PathVerb[nPts]
+                             int nVerbs,
+                             int fillRule);
+        RIVE_DELEGATE_INTPTR(makeEmptyRenderPath, intptr_t ref);
+        RIVE_DELEGATE_INTPTR(makeRenderPaint, intptr_t ref);
+        RIVE_DELEGATE_INTPTR(decodeImage, intptr_t ref, intptr_t bytesArray, int nBytes);
+    };
 
-    static FreeDelegate ManagedFree;
-    static MakeRenderPathDelegate MangedMakeRenderPath;
-    static MakeEmptyObjectDelegate MangedMakeEmptyRenderPath;
-    static MakeEmptyObjectDelegate MangedMakeRenderPaint;
-    static DecodeImageDelegate MangedDecodeImage;
+    static Delegates s_delegates;
 
-    FactorySharp(intptr_t managedPtr) : m_ManagedPtr(managedPtr) {}
-    ~FactorySharp() { ManagedFree(m_ManagedPtr); }
+    FactorySharp(intptr_t managedRef) : m_ref(managedRef) {}
+    ~FactorySharp() { s_delegates.release(m_ref); }
 
     rcp<RenderBuffer> makeBufferU16(Span<const uint16_t> span) override {
         return rcp<RenderBuffer>(new RenderBufferSharp<uint16_t>(span));
@@ -498,47 +459,36 @@ public:
     }
 
     std::unique_ptr<RenderPath> makeRenderPath(RawPath& rawPath, FillRule fillRule) override {
-        return std::make_unique<RenderPathSharp>(MangedMakeRenderPath(m_ManagedPtr,
-                                                                      rawPath.points().data(),
-                                                                      rawPath.points().size(),
-                                                                      rawPath.verbs().data(),
-                                                                      rawPath.verbs().size(),
-                                                                      (int)fillRule));
+        return std::make_unique<RenderPathSharp>(
+            s_delegates.makeRenderPath(m_ref,
+                                       reinterpret_cast<intptr_t>(rawPath.points().data()),
+                                       rawPath.points().size(),
+                                       reinterpret_cast<intptr_t>(rawPath.verbs().data()),
+                                       rawPath.verbs().size(),
+                                       (int)fillRule));
     }
 
     std::unique_ptr<RenderPath> makeEmptyRenderPath() override {
-        return std::make_unique<RenderPathSharp>(MangedMakeEmptyRenderPath(m_ManagedPtr));
+        return std::make_unique<RenderPathSharp>(s_delegates.makeEmptyRenderPath(m_ref));
     }
 
     std::unique_ptr<RenderPaint> makeRenderPaint() override {
-        return std::make_unique<RenderPaintSharp>(MangedMakeRenderPaint(m_ManagedPtr));
+        return std::make_unique<RenderPaintSharp>(s_delegates.makeRenderPaint(m_ref));
     }
 
     std::unique_ptr<RenderImage> decodeImage(Span<const uint8_t> bytes) override {
-        intptr_t managedPtr = MangedDecodeImage(m_ManagedPtr, bytes.data(), bytes.count());
-        return managedPtr ? std::make_unique<RenderImageSharp>(managedPtr) : nullptr;
+        intptr_t managedRef =
+            s_delegates.decodeImage(m_ref, reinterpret_cast<intptr_t>(bytes.data()), bytes.count());
+        return managedRef ? std::make_unique<RenderImageSharp>(managedRef) : nullptr;
     }
 
-    const intptr_t m_ManagedPtr;
+    const intptr_t m_ref;
 };
 
-FactorySharp::FreeDelegate FactorySharp::ManagedFree;
-FactorySharp::MakeRenderPathDelegate FactorySharp::MangedMakeRenderPath;
-FactorySharp::MakeEmptyObjectDelegate FactorySharp::MangedMakeEmptyRenderPath;
-FactorySharp::MakeEmptyObjectDelegate FactorySharp::MangedMakeRenderPaint;
-FactorySharp::DecodeImageDelegate FactorySharp::MangedDecodeImage;
+FactorySharp::Delegates FactorySharp::s_delegates{};
 
-RIVE_DLL_VOID
-Factory_NativeInitDelegates(FactorySharp::FreeDelegate managedFree,
-                            FactorySharp::MakeRenderPathDelegate managedMakeRenderPath,
-                            FactorySharp::MakeEmptyObjectDelegate managedMakeEmptyRenderPath,
-                            FactorySharp::MakeEmptyObjectDelegate managedMakeRenderPaint,
-                            FactorySharp::DecodeImageDelegate managedDecodeImage) {
-    FactorySharp::ManagedFree = managedFree;
-    FactorySharp::MangedMakeRenderPath = managedMakeRenderPath;
-    FactorySharp::MangedMakeEmptyRenderPath = managedMakeEmptyRenderPath;
-    FactorySharp::MangedMakeRenderPaint = managedMakeRenderPaint;
-    FactorySharp::MangedDecodeImage = managedDecodeImage;
+RIVE_DLL_VOID Factory_RegisterDelegates(FactorySharp::Delegates delegates) {
+    FactorySharp::s_delegates = delegates;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -567,7 +517,6 @@ public:
         if (m_Artboard) {
             m_Scene = (name && name[0]) ? m_Artboard->stateMachineNamed(name)
                                         : m_Artboard->stateMachineAt(0);
-            printf("scene: %p", m_Scene.get());
         }
         return m_Scene != nullptr;
     }
@@ -613,111 +562,116 @@ private:
     std::unique_ptr<Scene> m_Scene;
 };
 
-RIVE_DLL_INTPTR Scene_NativeNew(intptr_t managedFactory) {
+RIVE_DLL_INTPTR Scene_New(intptr_t managedFactory) {
     return reinterpret_cast<intptr_t>(
         new NativeScene(std::make_unique<FactorySharp>(managedFactory)));
 }
 
-RIVE_DLL_VOID Scene_NativeDelete(intptr_t ptr) { delete reinterpret_cast<NativeScene*>(ptr); }
+RIVE_DLL_VOID Scene_Delete(intptr_t ref) { delete reinterpret_cast<NativeScene*>(ref); }
 
-RIVE_DLL_INT8_BOOL Scene_NativeLoadFile(intptr_t ptr, const uint8_t* fileBytes, int length) {
-    return reinterpret_cast<NativeScene*>(ptr)->loadFile(fileBytes, length);
+RIVE_DLL_INT8_BOOL Scene_LoadFile(intptr_t ref, const uint8_t* fileBytes, int length) {
+    return reinterpret_cast<NativeScene*>(ref)->loadFile(fileBytes, length);
 }
 
-RIVE_DLL_INT8_BOOL Scene_NativeLoadArtboard(intptr_t ptr, const char* name) {
-    return reinterpret_cast<NativeScene*>(ptr)->loadArtboard(name);
+RIVE_DLL_INT8_BOOL Scene_LoadArtboard(intptr_t ref, const char* name) {
+    return reinterpret_cast<NativeScene*>(ref)->loadArtboard(name);
 }
 
-RIVE_DLL_INT8_BOOL Scene_NativeLoadStateMachine(intptr_t ptr, const char* name) {
-    return reinterpret_cast<NativeScene*>(ptr)->loadStateMachine(name);
+RIVE_DLL_INT8_BOOL Scene_LoadStateMachine(intptr_t ref, const char* name) {
+    return reinterpret_cast<NativeScene*>(ref)->loadStateMachine(name);
 }
 
-RIVE_DLL_INT8_BOOL Scene_NativeLoadAnimation(intptr_t ptr, const char* name) {
-    return reinterpret_cast<NativeScene*>(ptr)->loadAnimation(name);
+RIVE_DLL_INT8_BOOL Scene_LoadAnimation(intptr_t ref, const char* name) {
+    return reinterpret_cast<NativeScene*>(ref)->loadAnimation(name);
 }
 
-RIVE_DLL_INT8_BOOL Scene_NativeSetBool(intptr_t ptr, const char* name, bool value) {
-    return reinterpret_cast<NativeScene*>(ptr)->setBool(name, value);
+RIVE_DLL_INT8_BOOL Scene_SetBool(intptr_t ref, const char* name, int32_t value) {
+    return reinterpret_cast<NativeScene*>(ref)->setBool(name, value);
 }
 
-RIVE_DLL_INT8_BOOL Scene_NativeSetNumber(intptr_t ptr, const char* name, float value) {
-    return reinterpret_cast<NativeScene*>(ptr)->setNumber(name, value);
+RIVE_DLL_INT8_BOOL Scene_SetNumber(intptr_t ref, const char* name, float value) {
+    return reinterpret_cast<NativeScene*>(ref)->setNumber(name, value);
 }
 
-RIVE_DLL_INT8_BOOL Scene_NativeFireTrigger(intptr_t ptr, const char* name) {
-    return reinterpret_cast<NativeScene*>(ptr)->fireTrigger(name);
+RIVE_DLL_INT8_BOOL Scene_FireTrigger(intptr_t ref, const char* name) {
+    return reinterpret_cast<NativeScene*>(ref)->fireTrigger(name);
 }
 
-RIVE_DLL_FLOAT Scene_NativeWidth(intptr_t ptr) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ptr)->scene()) {
+RIVE_DLL_FLOAT Scene_Width(intptr_t ref) {
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
         return scene->width();
     }
     return 0;
 }
 
-RIVE_DLL_FLOAT Scene_NativeHeight(intptr_t ptr) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ptr)->scene()) {
+RIVE_DLL_FLOAT Scene_Height(intptr_t ref) {
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
         return scene->height();
     }
     return 0;
 }
 
-RIVE_DLL_BSTR Scene_NativeName(intptr_t ptr) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ptr)->scene()) {
-        return ::SysAllocStringByteLen(scene->name().c_str(), (int)scene->name().length());
-    }
-    return ::SysAllocString(L"");
-}
-
-RIVE_DLL_INT32 Scene_NativeLoop(intptr_t ptr) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ptr)->scene()) {
-        return (int)reinterpret_cast<NativeScene*>(ptr)->scene()->loop();
+RIVE_DLL_INT32 Scene_Name(intptr_t ref, char* charArray) {
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
+        const std::string& name = scene->name();
+        int32_t numChars = name.length();
+        if (charArray) {
+            memcpy(charArray, name.c_str(), numChars);
+        }
+        return numChars;
     }
     return 0;
 }
 
-RIVE_DLL_INT8_BOOL Scene_NativeIsTranslucent(intptr_t ptr) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ptr)->scene()) {
-        return reinterpret_cast<NativeScene*>(ptr)->scene()->isTranslucent();
+RIVE_DLL_INT32 Scene_Loop(intptr_t ref) {
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
+        return (int)reinterpret_cast<NativeScene*>(ref)->scene()->loop();
     }
     return 0;
 }
 
-RIVE_DLL_FLOAT Scene_NativeDurationSeconds(intptr_t ptr) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ptr)->scene()) {
+RIVE_DLL_INT8_BOOL Scene_IsTranslucent(intptr_t ref) {
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
+        return reinterpret_cast<NativeScene*>(ref)->scene()->isTranslucent();
+    }
+    return 0;
+}
+
+RIVE_DLL_FLOAT Scene_DurationSeconds(intptr_t ref) {
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
         return scene->durationSeconds();
     }
     return 0;
 }
 
-RIVE_DLL_INT8_BOOL Scene_NativeAdvanceAndApply(intptr_t ptr, float elapsedSeconds) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ptr)->scene()) {
+RIVE_DLL_INT8_BOOL Scene_AdvanceAndApply(intptr_t ref, float elapsedSeconds) {
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
         return scene->advanceAndApply(elapsedSeconds);
     }
     return false;
 }
 
-RIVE_DLL_VOID Scene_NativeDraw(intptr_t ptr, intptr_t renderer) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ptr)->scene()) {
+RIVE_DLL_VOID Scene_Draw(intptr_t ref, intptr_t renderer) {
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
         RendererSharp nativeRenderer(renderer);
         return scene->draw(&nativeRenderer);
     }
 }
 
-RIVE_DLL_VOID Scene_NativePointerDown(intptr_t ptr, const Vec2D& pos) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ptr)->scene()) {
+RIVE_DLL_VOID Scene_PointerDown(intptr_t ref, Vec2D pos) {
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
         return scene->pointerDown(pos);
     }
 }
 
-RIVE_DLL_VOID Scene_NativePointerMove(intptr_t ptr, const Vec2D& pos) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ptr)->scene()) {
+RIVE_DLL_VOID Scene_PointerMove(intptr_t ref, Vec2D pos) {
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
         return scene->pointerMove(pos);
     }
 }
 
-RIVE_DLL_VOID Scene_NativePointerUp(intptr_t ptr, const Vec2D& pos) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ptr)->scene()) {
+RIVE_DLL_VOID Scene_PointerUp(intptr_t ref, Vec2D pos) {
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
         return scene->pointerUp(pos);
     }
 }

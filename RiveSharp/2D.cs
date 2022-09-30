@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 
 namespace RiveSharp
 {
-    [StructLayout(LayoutKind.Sequential, Pack = 0)]
+    [StructLayout(LayoutKind.Sequential)]
     public struct AABB
     {
         public float MinX, MinY, MaxX, MaxY;
@@ -19,7 +19,7 @@ namespace RiveSharp
         }
     }
 
-    [StructLayout(LayoutKind.Sequential, Pack = 0)]
+    [StructLayout(LayoutKind.Sequential)]
     public struct Vec2D
     {
         public float X, Y;
@@ -31,7 +31,7 @@ namespace RiveSharp
         }
     }
 
-    [StructLayout(LayoutKind.Sequential, Pack = 0)]
+    [StructLayout(LayoutKind.Sequential)]
     public struct Mat2D
     {
         public float X1, Y1, X2, Y2, Tx, Ty;
@@ -65,35 +65,38 @@ namespace RiveSharp
             this.Ty = ty;
         }
 
-        public static Mat2D operator *(Mat2D a, Mat2D b)
+        public static unsafe Mat2D operator *(Mat2D a, Mat2D b)
         {
-            Mat2D_Multiply(in a, in b, out Mat2D product);
+            var product = new Mat2D();
+            RiveAPI.Mat2D_Multiply(a, b, &product);
             return product;
         }
 
-        public static Vec2D operator *(Mat2D a, Vec2D b)
+        public static unsafe Vec2D operator *(Mat2D a, Vec2D b)
         {
-            Mat2D_MultiplyVec2D(in a, in b, out Vec2D product);
+            var product = new Vec2D();
+            RiveAPI.Mat2D_MultiplyVec2D(a, b, &product);
             return product;
         }
 
-        public bool Invert(out Mat2D inverse)
+        public unsafe bool Invert(out Mat2D inverse)
         {
-            return Mat2D_Invert(in this, out inverse) != 0;
+            var result = new Mat2D();
+            if (RiveAPI.Mat2D_Invert(this, &result) != 0)
+            {
+                inverse = result;
+                return true;
+            }
+            else
+            {
+                inverse = Mat2D.Identity;
+                return false;
+            }
         }
 
         public Mat2D InvertOrIdentity()
         {
             return Invert(out Mat2D inverse) ? inverse : Mat2D.Identity;
         }
-
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void Mat2D_Multiply(in Mat2D a, in Mat2D b, out Mat2D c);
-
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void Mat2D_MultiplyVec2D(in Mat2D a, in Vec2D b, out Vec2D c);
-
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern SByte Mat2D_Invert(in Mat2D a, out Mat2D b);
     }
 }

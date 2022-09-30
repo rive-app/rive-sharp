@@ -25,11 +25,11 @@ namespace RiveSharp
 
         public Scene()
         {
-            NativePtr = Scene_NativeNew(Factory.Instance.RefNative());
+            NativePtr = RiveAPI.Scene_New(RiveAPI.CreateNativeRef(Factory.Instance));
         }
         ~Scene()
         {
-            Scene_NativeDelete(NativePtr);
+            RiveAPI.Scene_Delete(NativePtr);
         }
 
         private bool _isLoaded = false;
@@ -49,33 +49,33 @@ namespace RiveSharp
             {
                 return false;
             }
-            return Scene_NativeLoadFile(NativePtr, data, data.Length) != 0;
+            return RiveAPI.Scene_LoadFile(NativePtr, data, data.Length) != 0;
         }
 
         // Loads an artboard and animation from the already-loaded file.
         public bool LoadArtboard(string artboardName)
         {
             _isLoaded = false;
-            return Scene_NativeLoadArtboard(NativePtr, artboardName) != 0;
+            return RiveAPI.Scene_LoadArtboard(NativePtr, artboardName) != 0;
         }
 
         // Loads a state machine from the already-loaded artboard and file.
         public bool LoadStateMachine(string stateMachineName)
         {
-            _isLoaded = Scene_NativeLoadStateMachine(NativePtr, stateMachineName) != 0;
+            _isLoaded = RiveAPI.Scene_LoadStateMachine(NativePtr, stateMachineName) != 0;
             return this.IsLoaded;
         }
 
         // Loads an animation from the already-loaded artboard and file.
         public bool LoadAnimation(string animationName)
         {
-            _isLoaded = Scene_NativeLoadAnimation(NativePtr, animationName) != 0;
+            _isLoaded = RiveAPI.Scene_LoadAnimation(NativePtr, animationName) != 0;
             return this.IsLoaded;
         }
 
         public void SetBool(string name, bool value)
         {
-            if (this.IsLoaded && Scene_NativeSetBool(NativePtr, name, value) == 0)
+            if (this.IsLoaded && RiveAPI.Scene_SetBool(NativePtr, name, value ? 1 : 0) == 0)
             {
                 throw new Exception($"State machine bool input '{name}' not found.");
             }
@@ -83,7 +83,7 @@ namespace RiveSharp
 
         public void SetNumber(string name, float value)
         {
-            if (this.IsLoaded && Scene_NativeSetNumber(NativePtr, name, value) == 0)
+            if (this.IsLoaded && RiveAPI.Scene_SetNumber(NativePtr, name, value) == 0)
             {
                 throw new Exception($"State machine number input '{name}' not found.");
             }
@@ -91,101 +91,54 @@ namespace RiveSharp
 
         public void FireTrigger(string name)
         {
-            if (this.IsLoaded && Scene_NativeFireTrigger(NativePtr, name) == 0)
+            if (this.IsLoaded && RiveAPI.Scene_FireTrigger(NativePtr, name) == 0)
             {
                 throw new Exception($"State machine trigger input '{name}' not found.");
             }
         }
 
-        public float Width => Scene_NativeWidth(NativePtr);
-        public float Height => Scene_NativeHeight(NativePtr);
-        public string Name => Scene_NativeName(NativePtr);
+        public float Width => RiveAPI.Scene_Width(NativePtr);
+        public float Height => RiveAPI.Scene_Height(NativePtr);
+
+        public string Name
+        {
+            get
+            {
+                int numChars = RiveAPI.Scene_Name(NativePtr, null);
+                if (numChars > 1)
+                {
+                    char[] charArray = new char[numChars];
+                    RiveAPI.Scene_Name(NativePtr, charArray);
+                    return new string(charArray);
+                }
+                return "";
+            }
+        }
 
         // Returns OneShot if this has no looping (e.g. a statemachine)
-        public Loop Loop => (Loop)Scene_NativeLoop(NativePtr);
+        public Loop Loop => (Loop)RiveAPI.Scene_Loop(NativePtr);
 
         // Returns true iff the Scene is known to not be fully opaque
-        public bool IsTranslucent => Scene_NativeIsTranslucent(NativePtr) != 0;
+        public bool IsTranslucent => RiveAPI.Scene_IsTranslucent(NativePtr) != 0;
 
         // returns -1 for continuous
-        public double DurationSeconds => Scene_NativeDurationSeconds(NativePtr);
+        public double DurationSeconds => RiveAPI.Scene_DurationSeconds(NativePtr);
 
         // returns true if Draw() should be called
         public bool AdvanceAndApply(double elapsedSeconds)
         {
-            return Scene_NativeAdvanceAndApply(NativePtr, (float)elapsedSeconds) != 0;
+            return RiveAPI.Scene_AdvanceAndApply(NativePtr, (float)elapsedSeconds) != 0;
         }
 
         public void Draw(Renderer renderer)
         {
             var gch = GCHandle.Alloc(renderer);
-            Scene_NativeDraw(NativePtr, GCHandle.ToIntPtr(gch));
+            RiveAPI.Scene_Draw(NativePtr, GCHandle.ToIntPtr(gch));
             gch.Free();
         }
 
-        public void PointerDown(Vec2D pos) => Scene_NativePointerDown(NativePtr, in pos);
-        public void PointerMove(Vec2D pos) => Scene_NativePointerMove(NativePtr, in pos);
-        public void PointerUp(Vec2D pos) => Scene_NativePointerUp(NativePtr, in pos);
-
-        // Native interop.
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern IntPtr Scene_NativeNew(IntPtr factoryPtr);
-
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void Scene_NativeDelete(IntPtr scene);
-
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern SByte Scene_NativeLoadFile(IntPtr scene, byte[] fileBytes, int length);
-
-        [DllImport("rive.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        private static extern SByte Scene_NativeLoadArtboard(IntPtr scene, string name);
-
-        [DllImport("rive.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        private static extern SByte Scene_NativeLoadStateMachine(IntPtr scene, string name);
-
-        [DllImport("rive.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        private static extern SByte Scene_NativeLoadAnimation(IntPtr scene, string name);
-
-        [DllImport("rive.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        private static extern SByte Scene_NativeSetBool(IntPtr scene, string name, bool value);
-
-        [DllImport("rive.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        private static extern SByte Scene_NativeSetNumber(IntPtr scene, string name, float value);
-
-        [DllImport("rive.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        private static extern SByte Scene_NativeFireTrigger(IntPtr scene, string name);
-
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern Single Scene_NativeWidth(IntPtr scene);
-
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern Single Scene_NativeHeight(IntPtr scene);
-
-        [DllImport("rive.dll", CharSet = CharSet.Ansi, CallingConvention = CallingConvention.Cdecl)]
-        private static extern String Scene_NativeName(IntPtr scene);
-
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern Int32 Scene_NativeLoop(IntPtr scene);
-
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern SByte Scene_NativeIsTranslucent(IntPtr scene);
-
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern Single Scene_NativeDurationSeconds(IntPtr scene);
-
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern SByte Scene_NativeAdvanceAndApply(IntPtr scene, float elapsedSeconds);
-
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void Scene_NativeDraw(IntPtr scene, IntPtr renderer);
-
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void Scene_NativePointerDown(IntPtr scene, in Vec2D pos);
-
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void Scene_NativePointerMove(IntPtr scene, in Vec2D pos);
-
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void Scene_NativePointerUp(IntPtr scene, in Vec2D pos);
+        public void PointerDown(Vec2D pos) => RiveAPI.Scene_PointerDown(NativePtr, pos);
+        public void PointerMove(Vec2D pos) => RiveAPI.Scene_PointerMove(NativePtr, pos);
+        public void PointerUp(Vec2D pos) => RiveAPI.Scene_PointerUp(NativePtr, pos);
     }
 }

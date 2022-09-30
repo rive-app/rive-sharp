@@ -8,7 +8,20 @@ namespace RiveSharp
 {
     public class Factory
     {
-        static Factory() => InitNativeDelegates();
+        static readonly FactoryDelegates Delegates = new FactoryDelegates
+        {
+            Release = RiveAPI.ReleaseNativeRefCallback,
+            MakeRenderPath = MakeRenderPathCallback,
+            MakeEmptyRenderPath = MakeEmptyRenderPathCallback,
+            MakeRenderPaint = MakeRenderPaintCallback,
+            DecodeImage = DecodeImageCallback
+        };
+
+        static Factory()
+        {
+            RiveAPI.Factory_RegisterDelegates(Delegates);
+        }
+
         public static readonly Factory Instance = new Factory();
         private Factory() { }
 
@@ -32,55 +45,45 @@ namespace RiveSharp
             return RenderImage.Decode(data);
         }
 
-        // Native interop.
-        private delegate void NativeFreeDelegate(IntPtr ptr);
-        private delegate IntPtr NativeMakeRenderPathDelegate(
-            IntPtr ptr,
-            [MarshalAs(UnmanagedType.LPArray, SizeParamIndex=2)]
-            SKPoint[] pts,
-            int nPts,
-            [MarshalAs(UnmanagedType.LPArray, SizeParamIndex=4)]
-            byte[] verbs,
-            int nVerbs,
-            int fillRule);
-        private delegate IntPtr NativeMakeEmptyObjectDelegate(IntPtr ptr);
-        private delegate IntPtr NativeDecodeImageDelegate(
-            IntPtr ptr,
-            [MarshalAs(UnmanagedType.LPArray, SizeParamIndex=2)]
-            byte[] data,
-            int n);
-
-        internal IntPtr RefNative()
+        [MonoPInvokeCallback(typeof(FactoryDelegates.MakeRenderPathDelegate))]
+        static IntPtr MakeRenderPathCallback(IntPtr @ref,
+                                             IntPtr ptsArray,  // SKPoint[nPts]
+                                             int nPts,
+                                             IntPtr verbsArray,  // byte[nVerbs]
+                                             int nVerbs,
+                                             int fillRule)
         {
-            return GCHandle.ToIntPtr(GCHandle.Alloc(this));
+            var factory = RiveAPI.CastNativeRef<Factory>(@ref);
+            var pts = new SKPoint[nPts];
+            RiveAPI.CopySKPointArray(ptsArray, pts, nPts);
+            var verbs = new byte[nVerbs];
+            Marshal.Copy(verbsArray, verbs, 0, nVerbs);
+            return RiveAPI.CreateNativeRef(factory.MakeRenderPath(pts, verbs, (FillRule)fillRule));
         }
 
-        internal static Factory FromNative(IntPtr ptr)
+        [MonoPInvokeCallback(typeof(FactoryDelegates.MakeEmptyObjectDelegate))]
+        static IntPtr MakeEmptyRenderPathCallback(IntPtr @ref)
         {
-            return (Factory)GCHandle.FromIntPtr(ptr).Target;
+            var factory = RiveAPI.CastNativeRef<Factory>(@ref);
+            return RiveAPI.CreateNativeRef(factory.MakeEmptyRenderPath());
         }
 
-        internal static void InitNativeDelegates()
+        [MonoPInvokeCallback(typeof(FactoryDelegates.MakeEmptyObjectDelegate))]
+        static IntPtr MakeRenderPaintCallback(IntPtr @ref)
         {
-            Factory_NativeInitDelegates(
-                (IntPtr ptr) => GCHandle.FromIntPtr(ptr).Free(),
-                (IntPtr ptr, SKPoint[] pts, int nPts, byte[] verbs, int nVerbs, int fillRule) =>
-                    GCHandle.ToIntPtr(GCHandle.Alloc(FromNative(ptr).MakeRenderPath(pts, verbs, (FillRule)fillRule))),
-                (IntPtr ptr) => GCHandle.ToIntPtr(GCHandle.Alloc(FromNative(ptr).MakeEmptyRenderPath())),
-                (IntPtr ptr) => GCHandle.ToIntPtr(GCHandle.Alloc(FromNative(ptr).MakeRenderPaint())),
-                (IntPtr ptr, byte[] data, int n) =>
-                {
-                    var image = FromNative(ptr).DecodeImage(data);
-                    return (IntPtr)(image != null ? GCHandle.ToIntPtr(GCHandle.Alloc(image))
-                                                  : IntPtr.Zero);
-                });
+            var factory = RiveAPI.CastNativeRef<Factory>(@ref);
+            return RiveAPI.CreateNativeRef(factory.MakeRenderPaint());
         }
 
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void Factory_NativeInitDelegates(NativeFreeDelegate free,
-                                                               NativeMakeRenderPathDelegate makeRenderPath,
-                                                               NativeMakeEmptyObjectDelegate makeEmptyRenderPath,
-                                                               NativeMakeEmptyObjectDelegate makeRenderPaint,
-                                                               NativeDecodeImageDelegate decodeImage);
+        [MonoPInvokeCallback(typeof(FactoryDelegates.DecodeImageDelegate))]
+        static IntPtr DecodeImageCallback(IntPtr @ref, IntPtr bytesArray, int nBytes)
+        {
+            var factory = RiveAPI.CastNativeRef<Factory>(@ref);
+            var bytes = new byte[nBytes];
+            Marshal.Copy(bytesArray, bytes, 0, nBytes);
+            var image = factory.DecodeImage(bytes);
+            return (IntPtr)(image != null ? RiveAPI.CreateNativeRef(image)
+                                          : IntPtr.Zero);
+        }
     }
 }

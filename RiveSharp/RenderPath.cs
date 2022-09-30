@@ -15,7 +15,23 @@ namespace RiveSharp
 
     public class RenderPath
     {
-        static RenderPath() => InitNativeDelegates();
+        static readonly RenderPathDelegates Delegates = new RenderPathDelegates
+        {
+            Release = RiveAPI.ReleaseNativeRefCallback,
+            Reset = ResetCallback,
+            AddRenderPath = AddRenderPathCallback,
+            FillRule = FillRuleCallback,
+            MoveTo = MoveToCallback,
+            LineTo = LineToCallback,
+            QuadTo = QuadToCallback,
+            CubicTo = CubicToCallback,
+            Close = CloseCallback
+        };
+
+        static RenderPath()
+        {
+            RiveAPI.RenderPath_RegisterDelegates(Delegates);
+        }
 
         public readonly SKPath SKPath = new SKPath();
 
@@ -71,7 +87,7 @@ namespace RiveSharp
         public RenderPath() { }
 
         public void Reset() { SKPath.Reset(); }
-        public void AddRenderPath(RenderPath path, in Mat2D m)
+        public void AddRenderPath(RenderPath path, Mat2D m)
         {
             var mat = new SKMatrix(m.X1, m.X2, m.Tx, m.Y1, m.Y2, m.Ty, 0, 0, 1);
             SKPath.AddPath(path.SKPath, ref mat);
@@ -89,53 +105,65 @@ namespace RiveSharp
         }
         public void Close() { SKPath.Close(); }
 
-        // Native interop.
-        private delegate void NativeFreeDelegate(IntPtr ptr);
-        private delegate void NativeResetDelegate(IntPtr ptr);
-        private delegate void NativeAddRenderPathDelegate(IntPtr ptr, IntPtr path, in Mat2D m);
-        private delegate void NativeFillRuleDelegate(IntPtr ptr, int rule);
-        private delegate void NativeMoveToDelegate(IntPtr ptr, float x, float y);
-        private delegate void NativeLineToDelegate(IntPtr ptr, float x, float y);
-        private delegate void NativeQuadToDelegate(IntPtr ptr,
-                                                   float os, float oy,
-                                                   float x, float y);
-        private delegate void NativeCubicToDelegate(IntPtr ptr,
-                                                    float ox, float oy,
-                                                    float ix, float iy,
-                                                    float x, float y);
-        private delegate void NativeCloseDelegate(IntPtr ptr);
-
-        internal static RenderPath FromNative(IntPtr ptr)
+        [MonoPInvokeCallback(typeof(RenderPathDelegates.ResetDelegate))]
+        static void ResetCallback(IntPtr @ref)
         {
-            return (RenderPath)GCHandle.FromIntPtr(ptr).Target;
+            var renderPath = RiveAPI.CastNativeRef<RenderPath>(@ref);
+            renderPath.Reset();
         }
 
-        internal static void InitNativeDelegates()
+        [MonoPInvokeCallback(typeof(RenderPathDelegates.AddRenderPathDelegate))]
+        static void AddRenderPathCallback(IntPtr @ref,
+                                          IntPtr pathRef,
+                                          float x1, float y1,
+                                          float x2, float y2,
+                                          float tx, float ty)
         {
-            RenderPath_NativeInitDelegates(
-                (IntPtr ptr) => GCHandle.FromIntPtr(ptr).Free(),
-                (IntPtr ptr) => FromNative(ptr).Reset(),
-                (IntPtr ptr, IntPtr path, in Mat2D m)
-                    => FromNative(ptr).AddRenderPath(FromNative(path), m),
-                (IntPtr ptr, int rule) => FromNative(ptr).FillRule = (FillRule)rule,
-                (IntPtr ptr, float x, float y) => FromNative(ptr).MoveTo(x, y),
-                (IntPtr ptr, float x, float y) => FromNative(ptr).LineTo(x, y),
-                (IntPtr ptr, float ox, float oy, float x, float y)
-                    => FromNative(ptr).QuadTo(ox, oy, x, y),
-                (IntPtr ptr, float ox, float oy, float ix, float iy, float x, float y)
-                    => FromNative(ptr).CubicTo(ox, oy, ix, iy, x, y),
-                (IntPtr ptr) => FromNative(ptr).Close());
+            var renderPath = RiveAPI.CastNativeRef<RenderPath>(@ref);
+            var path = RiveAPI.CastNativeRef<RenderPath>(pathRef);
+            renderPath.AddRenderPath(path, new Mat2D(x1, y1, x2, y2, tx, ty));
         }
 
-        [DllImport("rive.dll", CallingConvention = CallingConvention.Cdecl)]
-        private static extern void RenderPath_NativeInitDelegates(NativeFreeDelegate b,
-                                                                  NativeResetDelegate c,
-                                                                  NativeAddRenderPathDelegate d,
-                                                                  NativeFillRuleDelegate e,
-                                                                  NativeMoveToDelegate f,
-                                                                  NativeLineToDelegate g,
-                                                                  NativeQuadToDelegate h,
-                                                                  NativeCubicToDelegate i,
-                                                                  NativeCloseDelegate j);
+        [MonoPInvokeCallback(typeof(RenderPathDelegates.FillRuleDelegate))]
+        static void FillRuleCallback(IntPtr @ref, int rule)
+        {
+            var renderPath = RiveAPI.CastNativeRef<RenderPath>(@ref);
+            renderPath.FillRule = (FillRule)rule;
+        }
+
+        [MonoPInvokeCallback(typeof(RenderPathDelegates.MoveToDelegate))]
+        static void MoveToCallback(IntPtr @ref, float x, float y)
+        {
+            var renderPath = RiveAPI.CastNativeRef<RenderPath>(@ref);
+            renderPath.MoveTo(x, y);
+        }
+
+        [MonoPInvokeCallback(typeof(RenderPathDelegates.LineToDelegate))]
+        static void LineToCallback(IntPtr @ref, float x, float y)
+        {
+            var renderPath = RiveAPI.CastNativeRef<RenderPath>(@ref);
+            renderPath.LineTo(x, y);
+        }
+
+        [MonoPInvokeCallback(typeof(RenderPathDelegates.QuadToDelegate))]
+        static void QuadToCallback(IntPtr @ref, float ox, float oy, float x, float y)
+        {
+            var renderPath = RiveAPI.CastNativeRef<RenderPath>(@ref);
+            renderPath.QuadTo(ox, oy, x, y);
+        }
+
+        [MonoPInvokeCallback(typeof(RenderPathDelegates.CubicToDelegate))]
+        static void CubicToCallback(IntPtr @ref, float ox, float oy, float ix, float iy, float x, float y)
+        {
+            var renderPath = RiveAPI.CastNativeRef<RenderPath>(@ref);
+            renderPath.CubicTo(ox, oy, ix, iy, x, y);
+        }
+
+        [MonoPInvokeCallback(typeof(RenderPathDelegates.CloseDelegate))]
+        static void CloseCallback(IntPtr @ref)
+        {
+            var renderPath = RiveAPI.CastNativeRef<RenderPath>(@ref);
+            renderPath.Close();
+        }
     }
 }
