@@ -56,17 +56,20 @@ static void msgbox(const char* format, ...) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-RIVE_DLL_VOID CopySKPointArray(intptr_t sourceArray, Vec2D* destination, int32_t count) {
+RIVE_DLL_VOID CopySKPointArray(intptr_t sourceArray, Vec2D* destination, int32_t count)
+{
     const Vec2D* source = reinterpret_cast<const Vec2D*>(sourceArray);
     memcpy(destination, source, count * sizeof(Vec2D));
 }
 
-RIVE_DLL_VOID CopyU32Array(intptr_t sourceArray, uint32_t* destination, int32_t count) {
+RIVE_DLL_VOID CopyU32Array(intptr_t sourceArray, uint32_t* destination, int32_t count)
+{
     const uint32_t* source = reinterpret_cast<const uint32_t*>(sourceArray);
     memcpy(destination, source, count * sizeof(uint32_t));
 }
 
-RIVE_DLL_VOID CopyU16Array(intptr_t sourceArray, uint16_t* destination, int32_t count) {
+RIVE_DLL_VOID CopyU16Array(intptr_t sourceArray, uint16_t* destination, int32_t count)
+{
     const uint16_t* source = reinterpret_cast<const uint16_t*>(sourceArray);
     memcpy(destination, source, count * sizeof(uint16_t));
 }
@@ -79,9 +82,11 @@ RIVE_DLL_INT8_BOOL Mat2D_Invert(Mat2D a, Mat2D* out) { return a.invert(out); }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class RenderPathSharp : public RenderPath {
+class RenderPathSharp : public RenderPath
+{
 public:
-    struct Delegates {
+    struct Delegates
+    {
         RIVE_DELEGATE_VOID(release, intptr_t ref);
         RIVE_DELEGATE_VOID(reset, intptr_t ref);
         RIVE_DELEGATE_VOID(addRenderPath,
@@ -117,7 +122,8 @@ public:
 
     void reset() override { s_delegates.reset(m_ref); }
     void fillRule(FillRule value) override { s_delegates.fillRule(m_ref, (int)value); }
-    void addRenderPath(RenderPath* path, const Mat2D& m) override {
+    void addRenderPath(RenderPath* path, const Mat2D& m) override
+    {
         s_delegates.addRenderPath(m_ref,
                                   static_cast<RenderPathSharp*>(path)->m_ref,
                                   m.xx(),
@@ -129,7 +135,8 @@ public:
     }
     void moveTo(float x, float y) override { s_delegates.moveTo(m_ref, x, y); }
     void lineTo(float x, float y) override { s_delegates.lineTo(m_ref, x, y); }
-    void cubicTo(float ox, float oy, float ix, float iy, float x, float y) override {
+    void cubicTo(float ox, float oy, float ix, float iy, float x, float y) override
+    {
         s_delegates.cubicTo(m_ref, ox, oy, ix, iy, x, y);
     }
     void close() override { s_delegates.close(m_ref); }
@@ -142,15 +149,18 @@ public:
 
 RenderPathSharp::Delegates RenderPathSharp::s_delegates{};
 
-RIVE_DLL_VOID RenderPath_RegisterDelegates(RenderPathSharp::Delegates delegates) {
+RIVE_DLL_VOID RenderPath_RegisterDelegates(RenderPathSharp::Delegates delegates)
+{
     RenderPathSharp::s_delegates = delegates;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class RenderImageSharp : public RenderImage {
+class RenderImageSharp : public RenderImage
+{
 public:
-    struct Delegates {
+    struct Delegates
+    {
         RIVE_DELEGATE_VOID(release, intptr_t ref);
         RIVE_DELEGATE_INT32(width, intptr_t ref);
         RIVE_DELEGATE_INT32(height, intptr_t ref);
@@ -158,7 +168,8 @@ public:
 
     static Delegates s_delegates;
 
-    RenderImageSharp(intptr_t managedRef) : m_ref(managedRef) {
+    RenderImageSharp(intptr_t managedRef) : m_ref(managedRef)
+    {
         m_Width = s_delegates.width(m_ref);
         m_Height = s_delegates.height(m_ref);
     }
@@ -171,15 +182,18 @@ public:
 
 RenderImageSharp::Delegates RenderImageSharp::s_delegates{};
 
-RIVE_DLL_VOID RenderImage_RegisterDelegates(RenderImageSharp::Delegates delegates) {
+RIVE_DLL_VOID RenderImage_RegisterDelegates(RenderImageSharp::Delegates delegates)
+{
     RenderImageSharp::s_delegates = delegates;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class RenderPaintSharp : public RenderPaint {
+class RenderPaintSharp : public RenderPaint
+{
 public:
-    struct Delegates {
+    struct Delegates
+    {
         RIVE_DELEGATE_VOID(release, intptr_t ref);
         RIVE_DELEGATE_VOID(style, intptr_t ref, int style);
         RIVE_DELEGATE_VOID(color, intptr_t ref, uint32_t color);
@@ -213,11 +227,13 @@ public:
     RenderPaintSharp& operator=(const RenderPaintSharp&) = delete;
     ~RenderPaintSharp() { s_delegates.release(m_ref); };
 
-    struct Shader : public RenderShader {
+    struct Shader : public RenderShader
+    {
         virtual void apply(intptr_t) const = 0;
     };
 
-    struct LinearGradientShader : public Shader {
+    struct LinearGradientShader : public Shader
+    {
         LinearGradientShader(float sx,
                              float sy,
                              float ex,
@@ -225,8 +241,10 @@ public:
                              const uint32_t colors[],
                              const float stops[],
                              int n) :
-            sx(sx), sy(sy), ex(ex), ey(ey), colors(colors, colors + n), stops(stops, stops + n) {}
-        void apply(intptr_t ref) const override {
+            sx(sx), sy(sy), ex(ex), ey(ey), colors(colors, colors + n), stops(stops, stops + n)
+        {}
+        void apply(intptr_t ref) const override
+        {
             s_delegates.linearGradient(ref,
                                        sx,
                                        sy,
@@ -242,15 +260,18 @@ public:
         const std::vector<float> stops;
     };
 
-    struct RadialGradientShader : public Shader {
+    struct RadialGradientShader : public Shader
+    {
         RadialGradientShader(float cx,
                              float cy,
                              float radius,
                              const uint32_t colors[],
                              const float stops[],
                              int n) :
-            cx(cx), cy(cy), radius(radius), colors(colors, colors + n), stops(stops, stops + n) {}
-        void apply(intptr_t ref) const override {
+            cx(cx), cy(cy), radius(radius), colors(colors, colors + n), stops(stops, stops + n)
+        {}
+        void apply(intptr_t ref) const override
+        {
             s_delegates.radialGradient(ref,
                                        cx,
                                        cy,
@@ -279,16 +300,18 @@ public:
 
 RenderPaintSharp::Delegates RenderPaintSharp::s_delegates{};
 
-RIVE_DLL_VOID RenderPaint_RegisterDelegates(RenderPaintSharp::Delegates delegates) {
+RIVE_DLL_VOID RenderPaint_RegisterDelegates(RenderPaintSharp::Delegates delegates)
+{
     RenderPaintSharp::s_delegates = delegates;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <typename T> class RenderBufferSharp : public RenderBuffer {
+template <typename T> class RenderBufferSharp : public RenderBuffer
+{
 public:
-    RenderBufferSharp(Span<const T> span) :
-        RenderBuffer(span.count()), m_Data(new T[span.count()]) {
+    RenderBufferSharp(Span<const T> span) : RenderBuffer(span.count()), m_Data(new T[span.count()])
+    {
         memcpy(m_Data.get(), span.data(), count() * sizeof(T));
     }
     const T* data() const { return m_Data.get(); }
@@ -299,9 +322,11 @@ private:
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class RendererSharp : public Renderer {
+class RendererSharp : public Renderer
+{
 public:
-    struct Delegates {
+    struct Delegates
+    {
         RIVE_DELEGATE_VOID(save, intptr_t ref);
         RIVE_DELEGATE_VOID(restore, intptr_t ref);
         RIVE_DELEGATE_VOID(transform, intptr_t ref, float, float, float, float, float, float);
@@ -328,18 +353,22 @@ public:
 
     void save() override { s_delegates.save(m_ref); }
     void restore() override { s_delegates.restore(m_ref); }
-    void transform(const Mat2D& m) override {
+    void transform(const Mat2D& m) override
+    {
         s_delegates.transform(m_ref, m.xx(), m.xy(), m.yx(), m.yy(), m.tx(), m.ty());
     }
-    void drawPath(RenderPath* path, RenderPaint* paint) override {
+    void drawPath(RenderPath* path, RenderPaint* paint) override
+    {
         s_delegates.drawPath(m_ref,
                              static_cast<RenderPathSharp*>(path)->m_ref,
                              static_cast<RenderPaintSharp*>(paint)->m_ref);
     }
-    void clipPath(RenderPath* path) override {
+    void clipPath(RenderPath* path) override
+    {
         s_delegates.clipPath(m_ref, static_cast<RenderPathSharp*>(path)->m_ref);
     }
-    void drawImage(const RenderImage* image, BlendMode blendMode, float opacity) override {
+    void drawImage(const RenderImage* image, BlendMode blendMode, float opacity) override
+    {
         s_delegates.drawImage(m_ref,
                               static_cast<const RenderImageSharp*>(image)->m_ref,
                               (int)blendMode,
@@ -350,7 +379,8 @@ public:
                        rcp<RenderBuffer> uvCoords_f32,
                        rcp<RenderBuffer> indices_u16,
                        BlendMode blendMode,
-                       float opacity) override {
+                       float opacity) override
+    {
         assert(vertices_f32->count() == uvCoords_f32->count());
         assert(vertices_f32->count() % 2 == 0);
 
@@ -361,7 +391,8 @@ public:
         int n = (int)uvCoords_f32->count();
         const float* uvs = static_cast<const RenderBufferSharp<float>*>(uvCoords_f32.get())->data();
         std::vector<float> denormUVs(n);
-        for (int i = 0; i < n; i += 2) {
+        for (int i = 0; i < n; i += 2)
+        {
             denormUVs[i] = uvs[i] * w;
             denormUVs[i + 1] = uvs[i + 1] * h;
         }
@@ -384,11 +415,13 @@ private:
 
 RendererSharp::Delegates RendererSharp::s_delegates{};
 
-RIVE_DLL_VOID Renderer_RegisterDelegates(RendererSharp::Delegates delegates) {
+RIVE_DLL_VOID Renderer_RegisterDelegates(RendererSharp::Delegates delegates)
+{
     RendererSharp::s_delegates = delegates;
 }
 
-struct ComputeAlignmentArgs {
+struct ComputeAlignmentArgs
+{
     int32_t fit;
     float alignX;
     float alignY;
@@ -397,7 +430,8 @@ struct ComputeAlignmentArgs {
     Mat2D matrix;
 };
 
-RIVE_DLL_VOID Renderer_ComputeAlignment(ComputeAlignmentArgs* args) {
+RIVE_DLL_VOID Renderer_ComputeAlignment(ComputeAlignmentArgs* args)
+{
     args->matrix = computeAlignment((Fit)args->fit,
                                     Alignment(args->alignX, args->alignY),
                                     args->frame,
@@ -406,9 +440,11 @@ RIVE_DLL_VOID Renderer_ComputeAlignment(ComputeAlignmentArgs* args) {
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class FactorySharp : public Factory {
+class FactorySharp : public Factory
+{
 public:
-    struct Delegates {
+    struct Delegates
+    {
         RIVE_DELEGATE_VOID(release, intptr_t ref);
         RIVE_DELEGATE_INTPTR(makeRenderPath,
                              intptr_t ref,
@@ -427,13 +463,16 @@ public:
     FactorySharp(intptr_t managedRef) : m_ref(managedRef) {}
     ~FactorySharp() { s_delegates.release(m_ref); }
 
-    rcp<RenderBuffer> makeBufferU16(Span<const uint16_t> span) override {
+    rcp<RenderBuffer> makeBufferU16(Span<const uint16_t> span) override
+    {
         return rcp<RenderBuffer>(new RenderBufferSharp<uint16_t>(span));
     }
-    rcp<RenderBuffer> makeBufferU32(Span<const uint32_t> span) override {
+    rcp<RenderBuffer> makeBufferU32(Span<const uint32_t> span) override
+    {
         return rcp<RenderBuffer>(new RenderBufferSharp<uint32_t>(span));
     }
-    rcp<RenderBuffer> makeBufferF32(Span<const float> span) override {
+    rcp<RenderBuffer> makeBufferF32(Span<const float> span) override
+    {
         return rcp<RenderBuffer>(new RenderBufferSharp<float>(span));
     }
 
@@ -443,7 +482,8 @@ public:
                                          float ey,
                                          const ColorInt colors[], // [count]
                                          const float stops[],     // [count]
-                                         size_t count) override {
+                                         size_t count) override
+    {
         return rcp<RenderShader>(
             new RenderPaintSharp::LinearGradientShader(sx, sy, ex, ey, colors, stops, (int)count));
     }
@@ -453,12 +493,14 @@ public:
                                          float radius,
                                          const ColorInt colors[], // [count]
                                          const float stops[],     // [count]
-                                         size_t count) override {
+                                         size_t count) override
+    {
         return rcp<RenderShader>(
             new RenderPaintSharp::RadialGradientShader(cx, cy, radius, colors, stops, (int)count));
     }
 
-    std::unique_ptr<RenderPath> makeRenderPath(RawPath& rawPath, FillRule fillRule) override {
+    std::unique_ptr<RenderPath> makeRenderPath(RawPath& rawPath, FillRule fillRule) override
+    {
         return std::make_unique<RenderPathSharp>(
             s_delegates.makeRenderPath(m_ref,
                                        reinterpret_cast<intptr_t>(rawPath.points().data()),
@@ -468,15 +510,18 @@ public:
                                        (int)fillRule));
     }
 
-    std::unique_ptr<RenderPath> makeEmptyRenderPath() override {
+    std::unique_ptr<RenderPath> makeEmptyRenderPath() override
+    {
         return std::make_unique<RenderPathSharp>(s_delegates.makeEmptyRenderPath(m_ref));
     }
 
-    std::unique_ptr<RenderPaint> makeRenderPaint() override {
+    std::unique_ptr<RenderPaint> makeRenderPaint() override
+    {
         return std::make_unique<RenderPaintSharp>(s_delegates.makeRenderPaint(m_ref));
     }
 
-    std::unique_ptr<RenderImage> decodeImage(Span<const uint8_t> bytes) override {
+    std::unique_ptr<RenderImage> decodeImage(Span<const uint8_t> bytes) override
+    {
         intptr_t managedRef =
             s_delegates.decodeImage(m_ref, reinterpret_cast<intptr_t>(bytes.data()), bytes.count());
         return managedRef ? std::make_unique<RenderImageSharp>(managedRef) : nullptr;
@@ -487,66 +532,81 @@ public:
 
 FactorySharp::Delegates FactorySharp::s_delegates{};
 
-RIVE_DLL_VOID Factory_RegisterDelegates(FactorySharp::Delegates delegates) {
+RIVE_DLL_VOID Factory_RegisterDelegates(FactorySharp::Delegates delegates)
+{
     FactorySharp::s_delegates = delegates;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-class NativeScene {
+class NativeScene
+{
 public:
     NativeScene(std::unique_ptr<FactorySharp> factory) : m_Factory(std::move(factory)) {}
 
-    bool loadFile(const uint8_t* fileBytes, int length) {
+    bool loadFile(const uint8_t* fileBytes, int length)
+    {
         m_Scene.reset();
         m_Artboard.reset();
         m_File = File::import(Span<const uint8_t>(fileBytes, length), m_Factory.get());
         return m_File != nullptr;
     }
 
-    bool loadArtboard(const char* name) {
+    bool loadArtboard(const char* name)
+    {
         m_Scene.reset();
-        if (m_File) {
+        if (m_File)
+        {
             m_Artboard =
                 (name && name[0]) ? m_File->artboardNamed(name) : m_File->artboardDefault();
         }
         return m_Artboard != nullptr;
     }
 
-    bool loadStateMachine(const char* name) {
-        if (m_Artboard) {
+    bool loadStateMachine(const char* name)
+    {
+        if (m_Artboard)
+        {
             m_Scene = (name && name[0]) ? m_Artboard->stateMachineNamed(name)
                                         : m_Artboard->stateMachineAt(0);
         }
         return m_Scene != nullptr;
     }
 
-    bool loadAnimation(const char* name) {
-        if (m_Artboard) {
+    bool loadAnimation(const char* name)
+    {
+        if (m_Artboard)
+        {
             m_Scene =
                 (name && name[0]) ? m_Artboard->animationNamed(name) : m_Artboard->animationAt(0);
         }
         return m_Scene != nullptr;
     }
 
-    bool setBool(const char* name, bool value) {
-        if (SMIBool * input; m_Scene && (input = m_Scene->getBool(name))) {
+    bool setBool(const char* name, bool value)
+    {
+        if (SMIBool * input; m_Scene && (input = m_Scene->getBool(name)))
+        {
             input->value(value);
             return true;
         }
         return false;
     }
 
-    bool setNumber(const char* name, float value) {
-        if (SMINumber * input; m_Scene && (input = m_Scene->getNumber(name))) {
+    bool setNumber(const char* name, float value)
+    {
+        if (SMINumber * input; m_Scene && (input = m_Scene->getNumber(name)))
+        {
             input->value(value);
             return true;
         }
         return false;
     }
 
-    bool fireTrigger(const char* name) {
-        if (SMITrigger * input; m_Scene && (input = m_Scene->getTrigger(name))) {
+    bool fireTrigger(const char* name)
+    {
+        if (SMITrigger * input; m_Scene && (input = m_Scene->getTrigger(name)))
+        {
             input->fire();
             return true;
         }
@@ -562,60 +622,75 @@ private:
     std::unique_ptr<Scene> m_Scene;
 };
 
-RIVE_DLL_INTPTR Scene_New(intptr_t managedFactory) {
+RIVE_DLL_INTPTR Scene_New(intptr_t managedFactory)
+{
     return reinterpret_cast<intptr_t>(
         new NativeScene(std::make_unique<FactorySharp>(managedFactory)));
 }
 
 RIVE_DLL_VOID Scene_Delete(intptr_t ref) { delete reinterpret_cast<NativeScene*>(ref); }
 
-RIVE_DLL_INT8_BOOL Scene_LoadFile(intptr_t ref, const uint8_t* fileBytes, int length) {
+RIVE_DLL_INT8_BOOL Scene_LoadFile(intptr_t ref, const uint8_t* fileBytes, int length)
+{
     return reinterpret_cast<NativeScene*>(ref)->loadFile(fileBytes, length);
 }
 
-RIVE_DLL_INT8_BOOL Scene_LoadArtboard(intptr_t ref, const char* name) {
+RIVE_DLL_INT8_BOOL Scene_LoadArtboard(intptr_t ref, const char* name)
+{
     return reinterpret_cast<NativeScene*>(ref)->loadArtboard(name);
 }
 
-RIVE_DLL_INT8_BOOL Scene_LoadStateMachine(intptr_t ref, const char* name) {
+RIVE_DLL_INT8_BOOL Scene_LoadStateMachine(intptr_t ref, const char* name)
+{
     return reinterpret_cast<NativeScene*>(ref)->loadStateMachine(name);
 }
 
-RIVE_DLL_INT8_BOOL Scene_LoadAnimation(intptr_t ref, const char* name) {
+RIVE_DLL_INT8_BOOL Scene_LoadAnimation(intptr_t ref, const char* name)
+{
     return reinterpret_cast<NativeScene*>(ref)->loadAnimation(name);
 }
 
-RIVE_DLL_INT8_BOOL Scene_SetBool(intptr_t ref, const char* name, int32_t value) {
+RIVE_DLL_INT8_BOOL Scene_SetBool(intptr_t ref, const char* name, int32_t value)
+{
     return reinterpret_cast<NativeScene*>(ref)->setBool(name, value);
 }
 
-RIVE_DLL_INT8_BOOL Scene_SetNumber(intptr_t ref, const char* name, float value) {
+RIVE_DLL_INT8_BOOL Scene_SetNumber(intptr_t ref, const char* name, float value)
+{
     return reinterpret_cast<NativeScene*>(ref)->setNumber(name, value);
 }
 
-RIVE_DLL_INT8_BOOL Scene_FireTrigger(intptr_t ref, const char* name) {
+RIVE_DLL_INT8_BOOL Scene_FireTrigger(intptr_t ref, const char* name)
+{
     return reinterpret_cast<NativeScene*>(ref)->fireTrigger(name);
 }
 
-RIVE_DLL_FLOAT Scene_Width(intptr_t ref) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
+RIVE_DLL_FLOAT Scene_Width(intptr_t ref)
+{
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene())
+    {
         return scene->width();
     }
     return 0;
 }
 
-RIVE_DLL_FLOAT Scene_Height(intptr_t ref) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
+RIVE_DLL_FLOAT Scene_Height(intptr_t ref)
+{
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene())
+    {
         return scene->height();
     }
     return 0;
 }
 
-RIVE_DLL_INT32 Scene_Name(intptr_t ref, char* charArray) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
+RIVE_DLL_INT32 Scene_Name(intptr_t ref, char* charArray)
+{
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene())
+    {
         const std::string& name = scene->name();
         int32_t numChars = name.length();
-        if (charArray) {
+        if (charArray)
+        {
             memcpy(charArray, name.c_str(), numChars);
         }
         return numChars;
@@ -623,55 +698,71 @@ RIVE_DLL_INT32 Scene_Name(intptr_t ref, char* charArray) {
     return 0;
 }
 
-RIVE_DLL_INT32 Scene_Loop(intptr_t ref) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
+RIVE_DLL_INT32 Scene_Loop(intptr_t ref)
+{
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene())
+    {
         return (int)reinterpret_cast<NativeScene*>(ref)->scene()->loop();
     }
     return 0;
 }
 
-RIVE_DLL_INT8_BOOL Scene_IsTranslucent(intptr_t ref) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
+RIVE_DLL_INT8_BOOL Scene_IsTranslucent(intptr_t ref)
+{
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene())
+    {
         return reinterpret_cast<NativeScene*>(ref)->scene()->isTranslucent();
     }
     return 0;
 }
 
-RIVE_DLL_FLOAT Scene_DurationSeconds(intptr_t ref) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
+RIVE_DLL_FLOAT Scene_DurationSeconds(intptr_t ref)
+{
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene())
+    {
         return scene->durationSeconds();
     }
     return 0;
 }
 
-RIVE_DLL_INT8_BOOL Scene_AdvanceAndApply(intptr_t ref, float elapsedSeconds) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
+RIVE_DLL_INT8_BOOL Scene_AdvanceAndApply(intptr_t ref, float elapsedSeconds)
+{
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene())
+    {
         return scene->advanceAndApply(elapsedSeconds);
     }
     return false;
 }
 
-RIVE_DLL_VOID Scene_Draw(intptr_t ref, intptr_t renderer) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
+RIVE_DLL_VOID Scene_Draw(intptr_t ref, intptr_t renderer)
+{
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene())
+    {
         RendererSharp nativeRenderer(renderer);
         return scene->draw(&nativeRenderer);
     }
 }
 
-RIVE_DLL_VOID Scene_PointerDown(intptr_t ref, Vec2D pos) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
+RIVE_DLL_VOID Scene_PointerDown(intptr_t ref, Vec2D pos)
+{
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene())
+    {
         return scene->pointerDown(pos);
     }
 }
 
-RIVE_DLL_VOID Scene_PointerMove(intptr_t ref, Vec2D pos) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
+RIVE_DLL_VOID Scene_PointerMove(intptr_t ref, Vec2D pos)
+{
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene())
+    {
         return scene->pointerMove(pos);
     }
 }
 
-RIVE_DLL_VOID Scene_PointerUp(intptr_t ref, Vec2D pos) {
-    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene()) {
+RIVE_DLL_VOID Scene_PointerUp(intptr_t ref, Vec2D pos)
+{
+    if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene())
+    {
         return scene->pointerUp(pos);
     }
 }
