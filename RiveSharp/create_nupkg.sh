@@ -24,13 +24,15 @@ fi
 pushd ../native
 
 # Build native dlls.
-premake5 vs2022
+premake5.exe --scripts=../../runtime/build vs2022
 msbuild.exe rive.vcxproj -p:Configuration=Release -p:Platform=x86 -p:UseMultiToolTask=true -p:EnforceProcessCountAcrossBuilds=true -m:10
 msbuild.exe rive.vcxproj -p:Configuration=Release -p:Platform=x64 -p:UseMultiToolTask=true -p:EnforceProcessCountAcrossBuilds=true -m:10
 msbuild.exe rive.vcxproj -p:Configuration=Release -p:Platform=ARM64 -p:UseMultiToolTask=true -p:EnforceProcessCountAcrossBuilds=true -m:10
 
 # Build wasm library.
-premake5.exe --file=premake5_wasm.lua cmake
+emsdk install 2.0.23
+emsdk activate 2.0.23
+premake5.exe --scripts=../../runtime/build --file=premake5_wasm.lua cmake
 emcmake cmake .
 cmake --build . -j10
 

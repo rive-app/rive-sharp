@@ -3,9 +3,9 @@ workspace "rive-cpp"
 configurations {"Release"}
 
 -- Are we in the "rive-sharp" or "rive" repository?
-local handle = io.popen("git remote -v")
-local git_remote = handle:read("*a")
-handle:close()
+local git_handle = io.popen("git remote -v")
+local git_remote = git_handle:read("*a")
+git_handle:close()
 if string.find(git_remote, "rive%-sharp") then
     -- In rive-sharp. Rive runtime is a submodule.
     RIVE_RUNTIME_DIR = "../submodules/rive-cpp"
@@ -14,11 +14,18 @@ else
     RIVE_RUNTIME_DIR = "../../runtime"
 end
 
+local emcc_handle = io.popen("emcc --version | grep ^emcc | sed 's/^.*\\([0-9]\\+\\.[0-9]\\+\\.[0-9]\\+\\).*$/\\1/'")
+local emcc_version = emcc_handle:read("*a"):gsub("%s+", "")
+emcc_handle:close()
+TARGET_DIR = "bin/emsdk/" .. emcc_version
+print("TARGET_DIR: " .. TARGET_DIR)
+
 project "rive"
+do
     kind "StaticLib"
     language "C++"
     cppdialect "C++17"
-    targetdir "bin/wasm"
+    targetdir (TARGET_DIR)
     objdir "obj/wasm"
     optimize "Size"
     flags { "FatalWarnings" }
@@ -35,3 +42,4 @@ project "rive"
         "NDEBUG",
         "WASM"
     }
+end
