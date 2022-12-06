@@ -42,4 +42,14 @@ do
         "NDEBUG",
         "WASM"
     }
+    filter "options:not no-exceptions"
+    do
+        -- WebAssembly Exceptions support is now required by Uno.
+        buildoptions { "-fwasm-exceptions" }
+    end
 end
+
+newoption {
+    trigger = 'no-exceptions',
+    description = 'build without -fwasm-exceptions',
+}

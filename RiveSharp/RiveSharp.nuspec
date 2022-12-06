@@ -14,7 +14,7 @@
     <copyright>Copyright 2022</copyright>
     <tags></tags>
     <dependencies>
-      <dependency id="SkiaSharp" version="2.88.0" />
+      <dependency id="SkiaSharp" version="2.88.3" />
     </dependencies>
   </metadata>
   <files>
@@ -24,13 +24,9 @@
     <file src="..\native\bin\ARM64\release\rive.dll" target="runtimes/win10-ARM64/native"/>
     <file src="..\native\bin\ARM\release\rive.dll" target="runtimes/win10-ARM/native"/>
 
-    <!-- wasm static library -->
-    <file src="..\native\bin\emsdk\2.0.23\librive.a" target="build/netstandard2.0/rive.a" />
-
-    <!-- build integration for wasm static library -->
-    <file src="RiveSharp.props" target="build/netstandard2.0/Rive.RiveSharp.props" />
-    <file src="RiveSharp.props" target="buildTransitive/netstandard2.0/Rive.RiveSharp.props" />
-    <file src="RiveSharp.targets" target="build/netstandard2.0/Rive.RiveSharp.targets" />
-    <file src="RiveSharp.targets" target="buildTransitive/netstandard2.0/Rive.RiveSharp.targets" />
+    <!-- wasm static libraries -->
+    <file src="RiveSharp.targets" target="buildTransitive/Rive.RiveSharp.targets" />
+    <file src="..\native\bin\emsdk\2.0.23\librive.a" target="buildTransitive/native/rive.a/2.0.23/rive.a" />
+    <file src="..\native\bin\emsdk\3.1.12\librive.a" target="buildTransitive/native/rive.a/3.1.12/rive.a" />
   </files>
 </package>
