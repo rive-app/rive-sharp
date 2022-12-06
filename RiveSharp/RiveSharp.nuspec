@@ -19,9 +19,10 @@
   </metadata>
   <files>
     <!-- native dlls -->
-    <file src="..\native\bin\x86\release\rive.dll" target="runtimes/win10-x86/native"/>
     <file src="..\native\bin\x64\release\rive.dll" target="runtimes/win10-x64/native"/>
+    <file src="..\native\bin\x86\release\rive.dll" target="runtimes/win10-x86/native"/>
     <file src="..\native\bin\ARM64\release\rive.dll" target="runtimes/win10-ARM64/native"/>
+    <file src="..\native\bin\ARM\release\rive.dll" target="runtimes/win10-ARM/native"/>
 
     <!-- wasm static library -->
     <file src="..\native\bin\emsdk\2.0.23\librive.a" target="build/netstandard2.0/rive.a" />

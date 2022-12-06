@@ -1,7 +1,7 @@
 workspace "rive-cpp"
 
 configurations {"Debug", "Release"}
-platforms {"x86", "x64", "ARM64"}
+platforms {"x64", "x86", "ARM64", "ARM"}
 
 -- Are we in the "rive-sharp" or "rive" repository?
 local handle = io.popen("git remote -v")
@@ -19,7 +19,6 @@ project "rive"
     kind "SharedLib"
     language "C++"
     cppdialect "C++17"
-    toolset "clang"
     targetdir "bin/%{cfg.platform}/%{cfg.buildcfg}"
     objdir "obj/%{cfg.platform}/%{cfg.buildcfg}"
     staticruntime "off"  -- /MD for dll
@@ -42,25 +41,20 @@ project "rive"
         defines {"NDEBUG"}
         optimize "Size"
 
-    filter "platforms:x86"
-        architecture "x86"
-
     filter "platforms:x64"
         architecture "x64"
+        toolset "clang"
+
+    filter "platforms:x86"
+        architecture "x86"
+        toolset "clang"
 
     filter "platforms:ARM64"
         architecture "ARM64"
+        toolset "clang"
+
+    filter "platforms:ARM"
+        architecture "ARM"
+        toolset "msc" -- clang isn't supported on ARM32
 
     filter {}
-
-    -- For future use: Compile in GMs
-    -- newoption {
-    --    trigger = "include-gms",
-    --    description = "Include source files for Rive GMs"
-    -- }
-    --
-    -- filter "options:include-gms"
-    --     includedirs {
-    --     }
-    --     files {
-    --     }

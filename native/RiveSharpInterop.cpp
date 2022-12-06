@@ -34,19 +34,19 @@ static void msgbox(const char* format, ...) {
 #endif
 
 #ifndef WASM
-#define RIVE_DLL extern "C" __declspec(dllexport) __cdecl
+#define RIVE_DLL(RET) extern "C" __declspec(dllexport) RET __cdecl
 #else
-#define RIVE_DLL extern "C" __attribute__((visibility("default"))) __cdecl
+#define RIVE_DLL(RET) extern "C" __attribute__((visibility("default"))) RET __cdecl
 #endif
 
 // Native P/Invoke functions may only return "blittable" types. To protect from inadvertently
 // returning an invalid type, we explicitly enumerate valid return types here. See:
 // https://docs.microsoft.com/en-us/dotnet/framework/interop/blittable-and-non-blittable-types
-#define RIVE_DLL_VOID RIVE_DLL void
-#define RIVE_DLL_INT8_BOOL RIVE_DLL int8_t
-#define RIVE_DLL_INT32 RIVE_DLL int32_t
-#define RIVE_DLL_FLOAT RIVE_DLL float
-#define RIVE_DLL_INTPTR RIVE_DLL intptr_t
+#define RIVE_DLL_VOID RIVE_DLL(void)
+#define RIVE_DLL_INT8_BOOL RIVE_DLL(int8_t)
+#define RIVE_DLL_INT32 RIVE_DLL(int32_t)
+#define RIVE_DLL_FLOAT RIVE_DLL(float)
+#define RIVE_DLL_INTPTR RIVE_DLL(intptr_t)
 
 // Reverse P/Invoke Function pointers back into managed code are also __cdecl and may also only
 // return blittable types.

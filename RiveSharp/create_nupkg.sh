@@ -25,9 +25,10 @@ pushd ../native
 
 # Build native dlls.
 premake5.exe --scripts=../../runtime/build vs2022
-msbuild.exe rive.vcxproj -p:Configuration=Release -p:Platform=x86 -p:UseMultiToolTask=true -p:EnforceProcessCountAcrossBuilds=true -m:10
 msbuild.exe rive.vcxproj -p:Configuration=Release -p:Platform=x64 -p:UseMultiToolTask=true -p:EnforceProcessCountAcrossBuilds=true -m:10
+msbuild.exe rive.vcxproj -p:Configuration=Release -p:Platform=x86 -p:UseMultiToolTask=true -p:EnforceProcessCountAcrossBuilds=true -m:10
 msbuild.exe rive.vcxproj -p:Configuration=Release -p:Platform=ARM64 -p:UseMultiToolTask=true -p:EnforceProcessCountAcrossBuilds=true -m:10
+msbuild.exe rive.vcxproj -p:Configuration=Release -p:Platform=ARM -p:UseMultiToolTask=true -p:EnforceProcessCountAcrossBuilds=true -m:10
 
 # Build wasm library.
 emsdk install 2.0.23
