@@ -32,6 +32,10 @@ internal class Goldens
             {
                 continue;  // https://github.com/rive-app/rive-cpp/issues/334
             }
+            if (riv.Contains("paper.riv"))
+            {
+                continue;  // https://github.com/rive-app/rive/issues/4573
+            }
 
             if (verbose)
             {
