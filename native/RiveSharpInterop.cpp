@@ -88,7 +88,7 @@ public:
     struct Delegates
     {
         RIVE_DELEGATE_VOID(release, intptr_t ref);
-        RIVE_DELEGATE_VOID(reset, intptr_t ref);
+        RIVE_DELEGATE_VOID(rewind, intptr_t ref);
         RIVE_DELEGATE_VOID(addRenderPath,
                            intptr_t ref,
                            intptr_t path,
@@ -120,7 +120,7 @@ public:
     RenderPathSharp& operator=(const RenderPathSharp&) = delete;
     ~RenderPathSharp() { s_delegates.release(m_ref); };
 
-    void reset() override { s_delegates.reset(m_ref); }
+    void rewind() override { s_delegates.rewind(m_ref); }
     void fillRule(FillRule value) override { s_delegates.fillRule(m_ref, (int)value); }
     void addRenderPath(RenderPath* path, const Mat2D& m) override
     {
