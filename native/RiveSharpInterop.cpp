@@ -1,5 +1,6 @@
 #include "rive/animation/state_machine_input_instance.hpp"
 #include "rive/factory.hpp"
+#include "utils/factory_utils.hpp"
 #include "rive/file.hpp"
 #include "rive/animation/animation.hpp"
 #include "rive/animation/linear_animation_instance.hpp"
@@ -307,21 +308,6 @@ RIVE_DLL_VOID RenderPaint_RegisterDelegates(RenderPaintSharp::Delegates delegate
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-template <typename T> class RenderBufferSharp : public RenderBuffer
-{
-public:
-    RenderBufferSharp(Span<const T> span) : RenderBuffer(span.count()), m_Data(new T[span.count()])
-    {
-        memcpy(m_Data.get(), span.data(), count() * sizeof(T));
-    }
-    const T* data() const { return m_Data.get(); }
-
-private:
-    std::unique_ptr<T[]> m_Data;
-};
-
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
 class RendererSharp : public Renderer
 {
 public:
@@ -378,18 +364,22 @@ public:
                        rcp<RenderBuffer> vertices_f32,
                        rcp<RenderBuffer> uvCoords_f32,
                        rcp<RenderBuffer> indices_u16,
+                       uint32_t vertexCount,
+                       uint32_t indexCount,
                        BlendMode blendMode,
                        float opacity) override
     {
-        assert(vertices_f32->count() == uvCoords_f32->count());
-        assert(vertices_f32->count() % 2 == 0);
+        // We need our buffers and counts to agree.
+        assert(vertices_f32->sizeInBytes() == vertexCount * sizeof(Vec2D));
+        assert(uvCoords_f32->sizeInBytes() == vertexCount * sizeof(Vec2D));
+        assert(indices_u16->sizeInBytes() == indexCount * sizeof(uint16_t));
 
         // The local matrix is ignored for SkCanvas::drawVertices, so we have to manually scale the
         // UVs to match Skia's convention.
         float w = (float)image->width();
         float h = (float)image->height();
-        int n = (int)uvCoords_f32->count();
-        const float* uvs = static_cast<const RenderBufferSharp<float>*>(uvCoords_f32.get())->data();
+        int n = vertexCount * 2;
+        const float* uvs = DataRenderBuffer::Cast(uvCoords_f32.get())->f32s();
         std::vector<float> denormUVs(n);
         for (int i = 0; i < n; i += 2)
         {
@@ -397,16 +387,15 @@ public:
             denormUVs[i + 1] = uvs[i + 1] * h;
         }
 
-        s_delegates.drawImageMesh(
-            m_ref,
-            static_cast<const RenderImageSharp*>(image)->m_ref,
-            static_cast<const RenderBufferSharp<float>*>(vertices_f32.get())->data(),
-            denormUVs.data(),
-            (int)vertices_f32->count() / 2,
-            static_cast<const RenderBufferSharp<uint16_t>*>(indices_u16.get())->data(),
-            (int)indices_u16->count(),
-            (int)blendMode,
-            opacity);
+        s_delegates.drawImageMesh(m_ref,
+                                  static_cast<const RenderImageSharp*>(image)->m_ref,
+                                  DataRenderBuffer::Cast(vertices_f32.get())->f32s(),
+                                  denormUVs.data(),
+                                  vertexCount,
+                                  DataRenderBuffer::Cast(indices_u16.get())->u16s(),
+                                  indexCount,
+                                  (int)blendMode,
+                                  opacity);
     }
 
 private:
@@ -463,17 +452,11 @@ public:
     FactorySharp(intptr_t managedRef) : m_ref(managedRef) {}
     ~FactorySharp() { s_delegates.release(m_ref); }
 
-    rcp<RenderBuffer> makeBufferU16(Span<const uint16_t> span) override
+    rcp<RenderBuffer> makeRenderBuffer(RenderBufferType type,
+                                       RenderBufferFlags flags,
+                                       size_t sizeInBytes) override
     {
-        return rcp<RenderBuffer>(new RenderBufferSharp<uint16_t>(span));
-    }
-    rcp<RenderBuffer> makeBufferU32(Span<const uint32_t> span) override
-    {
-        return rcp<RenderBuffer>(new RenderBufferSharp<uint32_t>(span));
-    }
-    rcp<RenderBuffer> makeBufferF32(Span<const float> span) override
-    {
-        return rcp<RenderBuffer>(new RenderBufferSharp<float>(span));
+        return make_rcp<DataRenderBuffer>(type, flags, sizeInBytes);
     }
 
     rcp<RenderShader> makeLinearGradient(float sx,
