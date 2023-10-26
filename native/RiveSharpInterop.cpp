@@ -503,11 +503,11 @@ public:
         return std::make_unique<RenderPaintSharp>(s_delegates.makeRenderPaint(m_ref));
     }
 
-    std::unique_ptr<RenderImage> decodeImage(Span<const uint8_t> bytes) override
+    rcp<RenderImage> decodeImage(Span<const uint8_t> bytes) override
     {
         intptr_t managedRef =
             s_delegates.decodeImage(m_ref, reinterpret_cast<intptr_t>(bytes.data()), bytes.count());
-        return managedRef ? std::make_unique<RenderImageSharp>(managedRef) : nullptr;
+        return managedRef ? make_rcp<RenderImageSharp>(managedRef) : nullptr;
     }
 
     const intptr_t m_ref;
