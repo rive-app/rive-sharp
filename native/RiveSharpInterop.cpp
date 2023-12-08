@@ -379,7 +379,7 @@ public:
         float w = (float)image->width();
         float h = (float)image->height();
         int n = vertexCount * 2;
-        const float* uvs = DataRenderBuffer::Cast(uvCoords_f32.get())->f32s();
+        const float* uvs = static_cast<DataRenderBuffer*>(uvCoords_f32.get())->f32s();
         std::vector<float> denormUVs(n);
         for (int i = 0; i < n; i += 2)
         {
@@ -389,10 +389,10 @@ public:
 
         s_delegates.drawImageMesh(m_ref,
                                   static_cast<const RenderImageSharp*>(image)->m_ref,
-                                  DataRenderBuffer::Cast(vertices_f32.get())->f32s(),
+                                  static_cast<DataRenderBuffer*>(vertices_f32.get())->f32s(),
                                   denormUVs.data(),
                                   vertexCount,
-                                  DataRenderBuffer::Cast(indices_u16.get())->u16s(),
+                                  static_cast<DataRenderBuffer*>(indices_u16.get())->u16s(),
                                   indexCount,
                                   (int)blendMode,
                                   opacity);
