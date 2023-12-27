@@ -482,9 +482,9 @@ public:
             new RenderPaintSharp::RadialGradientShader(cx, cy, radius, colors, stops, (int)count));
     }
 
-    std::unique_ptr<RenderPath> makeRenderPath(RawPath& rawPath, FillRule fillRule) override
+    rcp<RenderPath> makeRenderPath(RawPath& rawPath, FillRule fillRule) override
     {
-        return std::make_unique<RenderPathSharp>(
+        return make_rcp<RenderPathSharp>(
             s_delegates.makeRenderPath(m_ref,
                                        reinterpret_cast<intptr_t>(rawPath.points().data()),
                                        rawPath.points().size(),
@@ -493,14 +493,14 @@ public:
                                        (int)fillRule));
     }
 
-    std::unique_ptr<RenderPath> makeEmptyRenderPath() override
+    rcp<RenderPath> makeEmptyRenderPath() override
     {
-        return std::make_unique<RenderPathSharp>(s_delegates.makeEmptyRenderPath(m_ref));
+        return make_rcp<RenderPathSharp>(s_delegates.makeEmptyRenderPath(m_ref));
     }
 
-    std::unique_ptr<RenderPaint> makeRenderPaint() override
+    rcp<RenderPaint> makeRenderPaint() override
     {
-        return std::make_unique<RenderPaintSharp>(s_delegates.makeRenderPaint(m_ref));
+        return make_rcp<RenderPaintSharp>(s_delegates.makeRenderPaint(m_ref));
     }
 
     rcp<RenderImage> decodeImage(Span<const uint8_t> bytes) override
