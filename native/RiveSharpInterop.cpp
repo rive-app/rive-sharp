@@ -730,7 +730,7 @@ RIVE_DLL_VOID Scene_PointerDown(intptr_t ref, Vec2D pos)
 {
     if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene())
     {
-        return scene->pointerDown(pos);
+        scene->pointerDown(pos);
     }
 }
 
@@ -738,7 +738,7 @@ RIVE_DLL_VOID Scene_PointerMove(intptr_t ref, Vec2D pos)
 {
     if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene())
     {
-        return scene->pointerMove(pos);
+        scene->pointerMove(pos);
     }
 }
 
@@ -746,6 +746,6 @@ RIVE_DLL_VOID Scene_PointerUp(intptr_t ref, Vec2D pos)
 {
     if (Scene* scene = reinterpret_cast<NativeScene*>(ref)->scene())
     {
-        return scene->pointerUp(pos);
+        scene->pointerUp(pos);
     }
 }
