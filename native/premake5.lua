@@ -25,6 +25,8 @@ staticruntime('off') -- /MD for dll
 flags({ 'FatalWarnings' })
 includedirs({ RIVE_RUNTIME_DIR .. '/include', '../../include' })
 files({ RIVE_RUNTIME_DIR .. '/src/**.cpp', 'RiveSharpInterop.cpp' })
+-- this is building the actual rive library so it seems we need this here.
+defines({ '_RIVE_INTERNAL_' })
 
 filter('configurations:Debug')
 defines({ 'DEBUG' })
