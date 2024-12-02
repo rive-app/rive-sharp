@@ -30,7 +30,7 @@ do
     targetdir(TARGET_DIR)
     objdir('obj/wasm')
     optimize('Size')
-    flags({ 'FatalWarnings' })
+    flags({ 'FatalCompileWarnings' })
     includedirs({ RIVE_RUNTIME_DIR .. '/include', '../../include' })
     files({ RIVE_RUNTIME_DIR .. '/src/**.cpp', 'RiveSharpInterop.cpp' })
     defines({ 'RELEASE', 'NDEBUG', 'WASM' })

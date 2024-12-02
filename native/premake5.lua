@@ -22,7 +22,7 @@ cppdialect('C++17')
 targetdir('bin/%{cfg.platform}/%{cfg.buildcfg}')
 objdir('obj/%{cfg.platform}/%{cfg.buildcfg}')
 staticruntime('off') -- /MD for dll
-flags({ 'FatalWarnings' })
+flags({ 'FatalCompileWarnings' })
 includedirs({ RIVE_RUNTIME_DIR .. '/include', '../../include' })
 files({ RIVE_RUNTIME_DIR .. '/src/**.cpp', 'RiveSharpInterop.cpp' })
 -- this is building the actual rive library so it seems we need this here.
